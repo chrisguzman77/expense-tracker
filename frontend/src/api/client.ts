@@ -6,6 +6,9 @@ import type { paths } from "./schema";
 export const api = createClient<paths>({
   baseUrl: window.location.origin,
   credentials: "same-origin",
+  // Resolve fetch at call time rather than at import time so request
+  // interceptors (MSW in tests) installed later still see our requests.
+  fetch: (input) => globalThis.fetch(input),
 });
 
 export class ApiError extends Error {
