@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api, ApiError, unwrap } from "./client";
+import { api, unwrap, unwrapVoid } from "./client";
 import type { components } from "./schema";
 
 export const meQueryKey = ["me"] as const;
@@ -38,10 +38,7 @@ export function useRegister() {
 export function useLogout() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async () => {
-      const { error, response } = await api.POST("/api/auth/logout");
-      if (error !== undefined) throw new ApiError(response.status, "Logout failed");
-    },
+    mutationFn: () => unwrapVoid(api.POST("/api/auth/logout")),
     // Everything cached belongs to the user who just left.
     onSuccess: () => queryClient.clear(),
   });

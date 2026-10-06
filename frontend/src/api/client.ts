@@ -44,3 +44,11 @@ function errorMessage(error: unknown, response: Response): string {
   }
   return response.statusText || `Request failed with status ${response.status}`;
 }
+
+// For endpoints that return 204 No Content: nothing to return, still throw on error.
+export async function unwrapVoid(promise: Promise<FetchResult<unknown>>): Promise<void> {
+  const { error, response } = await promise;
+  if (error !== undefined) {
+    throw new ApiError(response.status, errorMessage(error, response));
+  }
+}
