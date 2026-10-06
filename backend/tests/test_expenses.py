@@ -52,3 +52,18 @@ def test_negative_amount_rejected(client):
         json={"category_id": cat, "amount": "-1", "spent_on": "2026-08-30"},
     )
     assert r.status_code == 422
+
+
+def test_summary_includes_categories_with_no_expenses_that_month(client):
+    signup(client, "a@b.com")
+    food = client.post("/api/categories", json={"name": "Food"}).json()["id"]
+    client.post("/api/categories", json={"name": "Travel"})  # never used
+    client.post(
+        "/api/expenses",
+        json={"category_id": food, "amount": "99.00", "spent_on": "2026-07-31"},
+    )
+    totals = {
+        row["name"]: row["total"]
+        for row in client.get("/api/summary?year=2026&month=8").json()
+    }
+    assert totals == {"Food": "0", "Travel": "0"}
