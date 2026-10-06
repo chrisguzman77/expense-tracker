@@ -5,6 +5,7 @@ import { CategoriesPage } from "./pages/CategoriesPage";
 import { ExpensesPage } from "./pages/ExpensesPage";
 import { LoginPage } from "./pages/LoginPage";
 import { RegisterPage } from "./pages/RegisterPage";
+import { SummaryPage } from "./pages/SummaryPage";
 
 export const router = createBrowserRouter([
   { path: "/login", element: <LoginPage /> },
@@ -17,6 +18,7 @@ export const router = createBrowserRouter([
         children: [
           { path: "/", element: <ExpensesPage /> },
           { path: "/categories", element: <CategoriesPage /> },
+          { path: "/summary", element: <SummaryPage /> },
         ],
       },
     ],

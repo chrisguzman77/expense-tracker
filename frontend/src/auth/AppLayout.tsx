@@ -26,6 +26,9 @@ export function AppLayout() {
             <NavLink to="/categories" className={linkClass}>
               Categories
             </NavLink>
+            <NavLink to="/summary" className={linkClass}>
+              Summary
+            </NavLink>
           </nav>
         </div>
         <div className="flex items-center gap-4 text-sm">
