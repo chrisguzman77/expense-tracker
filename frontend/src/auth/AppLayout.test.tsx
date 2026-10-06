@@ -4,14 +4,25 @@ import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { createMemoryRouter, RouterProvider } from "react-router-dom";
 import { describe, expect, it } from "vitest";
-import { RequireAuth } from "../auth/RequireAuth";
 import { server } from "../test/server";
-import { HomePage } from "./HomePage";
+import { AppLayout } from "./AppLayout";
+import { RequireAuth } from "./RequireAuth";
 
-function renderHome() {
+function renderLayout() {
   const router = createMemoryRouter(
     [
-      { element: <RequireAuth />, children: [{ path: "/", element: <HomePage /> }] },
+      {
+        element: <RequireAuth />,
+        children: [
+          {
+            element: <AppLayout />,
+            children: [
+              { path: "/", element: <div>home content</div> },
+              { path: "/categories", element: <div>categories content</div> },
+            ],
+          },
+        ],
+      },
       { path: "/login", element: <div>login page</div> },
     ],
     { initialEntries: ["/"] },
@@ -25,25 +36,38 @@ function renderHome() {
   return { queryClient };
 }
 
-describe("HomePage", () => {
-  it("shows the signed-in user's email", async () => {
-    server.use(http.get("/api/auth/me", () => HttpResponse.json({ id: 1, email: "chris@example.com" })));
+const me = () => http.get("/api/auth/me", () => HttpResponse.json({ id: 1, email: "chris@example.com" }));
 
-    renderHome();
+describe("AppLayout", () => {
+  it("shows the signed-in user's email and the child route", async () => {
+    server.use(me());
+
+    renderLayout();
 
     expect(await screen.findByText(/chris@example.com/)).toBeInTheDocument();
+    expect(screen.getByText("home content")).toBeInTheDocument();
+  });
+
+  it("navigates between sections", async () => {
+    server.use(me());
+    renderLayout();
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole("link", { name: /categories/i }));
+
+    expect(await screen.findByText("categories content")).toBeInTheDocument();
   });
 
   it("logs out, clears cached auth, and goes to /login", async () => {
     let loggedOut = false;
     server.use(
-      http.get("/api/auth/me", () => HttpResponse.json({ id: 1, email: "chris@example.com" })),
+      me(),
       http.post("/api/auth/logout", () => {
         loggedOut = true;
         return new HttpResponse(null, { status: 204 });
       }),
     );
-    const { queryClient } = renderHome();
+    const { queryClient } = renderLayout();
     const user = userEvent.setup();
 
     await user.click(await screen.findByRole("button", { name: /log out/i }));
