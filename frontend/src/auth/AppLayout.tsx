@@ -18,10 +18,10 @@ export function AppLayout() {
     <div className="mx-auto mt-8 max-w-2xl p-4">
       <header className="mb-8 flex items-center justify-between">
         <div className="flex items-center gap-6">
-          <h1 className="text-2xl font-semibold">Expenses</h1>
+          <h1 className="text-2xl font-semibold">Expense Tracker</h1>
           <nav className="flex gap-4 text-sm">
             <NavLink to="/" end className={linkClass}>
-              Home
+              Expenses
             </NavLink>
             <NavLink to="/categories" className={linkClass}>
               Categories
