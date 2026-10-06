@@ -2,7 +2,7 @@ import { createBrowserRouter } from "react-router-dom";
 import { AppLayout } from "./auth/AppLayout";
 import { RequireAuth } from "./auth/RequireAuth";
 import { CategoriesPage } from "./pages/CategoriesPage";
-import { HomePage } from "./pages/HomePage";
+import { ExpensesPage } from "./pages/ExpensesPage";
 import { LoginPage } from "./pages/LoginPage";
 import { RegisterPage } from "./pages/RegisterPage";
 
@@ -15,7 +15,7 @@ export const router = createBrowserRouter([
       {
         element: <AppLayout />,
         children: [
-          { path: "/", element: <HomePage /> },
+          { path: "/", element: <ExpensesPage /> },
           { path: "/categories", element: <CategoriesPage /> },
         ],
       },
