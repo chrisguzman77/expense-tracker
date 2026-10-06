@@ -95,12 +95,16 @@ def summary_by_category(db: Session, user_id: int, year: int, month: int):
             Category.name,
             func.coalesce(func.sum(Expense.amount), 0).label("total"),
         )
-        .join(Expense, Expense.category_id == Category.id, isouter=True)
-        .where(Category.user_id == user_id)
-        .where(
-            (Expense.spent_on >= start) & (Expense.spent_on < end)
-            | (Expense.id.is_(None))
+        # Date range lives in the ON clause so categories with no expenses
+        # this month survive the outer join (a WHERE filter would drop them).
+        .join(
+            Expense,
+            (Expense.category_id == Category.id)
+            & (Expense.spent_on >= start)
+            & (Expense.spent_on < end),
+            isouter=True,
         )
+        .where(Category.user_id == user_id)
         .group_by(Category.id)
         .order_by(func.sum(Expense.amount).desc().nulls_last())
     )
