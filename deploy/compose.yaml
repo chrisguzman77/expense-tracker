@@ -1,0 +1,66 @@
+# Production stack. Run on the VM from this directory:
+#   docker compose pull && docker compose up -d
+# Secrets come from ./.env (see .env.example), never from the images.
+# TLS is terminated on the host by `tailscale serve`, which proxies to 127.0.0.1:8080.
+
+x-api-image: &api-image ghcr.io/chrisguzman77/expense-tracker-api:${IMAGE_TAG:-latest}
+
+x-api-env: &api-env
+  ENVIRONMENT: production
+  DATABASE_URL: postgresql+psycopg://app:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@db:5432/expenses
+  JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
+
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: expenses
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app -d expenses"]
+      interval: 5s
+      retries: 10
+    # No ports: Postgres is reachable only on the compose network.
+
+  # One-shot: applies migrations, then exits. The api starts only if it exits 0.
+  migrate:
+    image: *api-image
+    command: ["uv", "run", "--no-sync", "alembic", "upgrade", "head"]
+    environment: *api-env
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    image: *api-image
+    restart: unless-stopped
+    environment: *api-env
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    # No ports: only nginx talks to the api.
+
+  web:
+    image: ghcr.io/chrisguzman77/expense-tracker-web:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    # Loopback only. tailscale serve on the host is the sole way in.
+    ports:
+      - "127.0.0.1:8080:80"
+
+volumes:
+  pgdata:
