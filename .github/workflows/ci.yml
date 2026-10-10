@@ -1,0 +1,119 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main, dev]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    services:
+      db:
+        image: postgres:16
+        env:
+          POSTGRES_USER: app
+          POSTGRES_PASSWORD: app
+          POSTGRES_DB: expenses
+        # Same host port as local dev; tests/conftest.py targets localhost:5434.
+        ports: ["5434:5432"]
+        options: >-
+          --health-cmd "pg_isready -U app -d expenses"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql+psycopg://app:app@localhost:5434/expenses
+      # Throwaway key for CI only; must still be >= 32 bytes.
+      JWT_SECRET: ci-only-jwt-secret-not-used-anywhere-else-0123456789
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - run: uv sync --frozen
+      - name: Ruff
+        run: |
+          uv run ruff check .
+          uv run ruff format --check .
+      - name: Migrations apply and match the models
+        # alembic check fails if autogenerate would emit anything, which catches
+        # a dropped `import app.models` in env.py or a model change with no migration.
+        run: |
+          uv run alembic upgrade head
+          uv run alembic check
+      - name: Create test database
+        run: PGPASSWORD=app psql -h localhost -p 5434 -U app -d expenses -c "CREATE DATABASE expenses_test"
+      - run: uv run pytest -v
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npx vitest run
+      - name: Type-check and build
+        run: npm run build
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - name: Generated API types match the backend
+        # Exports the OpenAPI spec from the app object (no server or DB needed)
+        # and fails if src/api/schema.d.ts was not regenerated after an API change.
+        env:
+          DATABASE_URL: postgresql+psycopg://unused:unused@localhost:1/unused
+          JWT_SECRET: ci-only-jwt-secret-not-used-anywhere-else-0123456789
+        run: |
+          (cd ../backend && uv sync --frozen --no-dev && uv run --no-sync python -c "import json; from app.main import app; print(json.dumps(app.openapi()))") > "$RUNNER_TEMP/openapi.json"
+          npx openapi-typescript "$RUNNER_TEMP/openapi.json" -o src/api/schema.d.ts
+          git diff --exit-code -- src/api/schema.d.ts
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build backend image
+        run: docker build -t expense-tracker-api:ci backend
+      - name: Build frontend image
+        run: docker build -t expense-tracker-web:ci frontend
+
+  publish:
+    # Only after a merge lands on main, and only if every check passed.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [backend, frontend, docker]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Log in to GHCR
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+      - name: Build and push api and web images
+        # Tags: the commit SHA (pin this in deploy/.env to roll back) and latest.
+        # The source label links each package to this repo on GitHub.
+        run: |
+          for pair in api:backend web:frontend; do
+            name="${pair%%:*}"; dir="${pair##*:}"
+            image="ghcr.io/chrisguzman77/expense-tracker-$name"
+            docker build \
+              --label "org.opencontainers.image.source=https://github.com/${{ github.repository }}" \
+              -t "$image:${{ github.sha }}" -t "$image:latest" "$dir"
+            docker push --all-tags "$image"
+          done
