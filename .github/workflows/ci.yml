@@ -92,3 +92,28 @@ jobs:
         run: docker build -t expense-tracker-api:ci backend
       - name: Build frontend image
         run: docker build -t expense-tracker-web:ci frontend
+
+  publish:
+    # Only after a merge lands on main, and only if every check passed.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [backend, frontend, docker]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Log in to GHCR
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+      - name: Build and push api and web images
+        # Tags: the commit SHA (pin this in deploy/.env to roll back) and latest.
+        # The source label links each package to this repo on GitHub.
+        run: |
+          for pair in api:backend web:frontend; do
+            name="${pair%%:*}"; dir="${pair##*:}"
+            image="ghcr.io/chrisguzman77/expense-tracker-$name"
+            docker build \
+              --label "org.opencontainers.image.source=https://github.com/${{ github.repository }}" \
+              -t "$image:${{ github.sha }}" -t "$image:latest" "$dir"
+            docker push --all-tags "$image"
+          done
