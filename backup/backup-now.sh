@@ -22,7 +22,7 @@ log "backing up database ${PGDATABASE} on ${PGHOST}"
 # restic runs pg_dump itself and discards the snapshot if pg_dump exits non-zero.
 # A plain `pg_dump | restic backup --stdin` would save a truncated dump as a success.
 # Fixed --host: container hostnames are random, and forget groups snapshots by host.
-restic backup --host expense-tracker --tag pgdump --stdin-filename expenses.dump --stdin-from-command -- \
+restic backup --retry-lock 10m --host expense-tracker --tag pgdump --stdin-filename expenses.dump --stdin-from-command -- \
   pg_dump --format=custom
 restic forget --retry-lock 10m --tag pgdump --keep-daily 7 --keep-weekly 4 --keep-monthly 6 --prune
 if [ "$(date +%u)" = 7 ]; then

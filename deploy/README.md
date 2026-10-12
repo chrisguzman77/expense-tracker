@@ -172,10 +172,21 @@ docker compose up -d
 
 `--single-transaction` means a failed restore leaves the database unchanged.
 
-If you might want the changes made since the last backup, run
-`docker compose run --rm backup backup-now` first. That safety backup then becomes `latest`, so
-pick the snapshot to restore by ID from `docker compose run --rm backup restic snapshots`
-and use it in place of `latest`.
+If you might want the changes made since the last backup, first save a safety copy of the live
+database (run this before the `stop` above, while `db` is up, or run `docker compose up -d db` first):
+
+```
+docker compose run --rm backup bash -c 'restic backup --host expense-tracker --tag pre-restore --stdin-filename expenses.dump --stdin-from-command -- pg_dump --format=custom'
+```
+
+It uses its own tag because the nightly retention only prunes `pgdump` snapshots, so this copy is
+never pruned automatically and doesn't become the restore's `latest`. (Do not use `backup-now`
+for this: its retention would replace today's good snapshot.) `pre-restore` snapshots stay until
+removed; delete one when no longer needed with
+`docker compose run --rm backup restic forget <id> --prune`.
+
+To restore an older snapshot instead of the newest, replace `latest` with a snapshot ID from
+`docker compose run --rm backup restic snapshots`.
 
 On startup, `migrate` applies any migrations newer than the backup.
 
@@ -190,6 +201,8 @@ On startup, `migrate` applies any migrations newer than the backup.
   docker compose exec db dropdb -U app expenses
   docker compose exec db createdb -U app expenses
   ```
+  Once the database is dropped, the transaction no longer protects it: a failed restore leaves it
+  empty rather than unchanged, so re-run the restore to recover.
 
 **If the VM is gone:** the repository in R2 already exists, so on a new VM:
 
