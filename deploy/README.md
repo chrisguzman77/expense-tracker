@@ -114,9 +114,10 @@ browser --https--> tailscale serve (VM, :443) --http--> 127.0.0.1:8080 nginx -->
    ```
    printf '\nALLOW_REGISTRATION=true\n' >> .env && docker compose up -d
    ```
-   Register in the app, then close it again and confirm sign-ups are refused. The probe sends an empty body, so it cannot create an account
-   either way: `403` means registration is closed; `422` means it is still open (go back and
-   remove the `ALLOW_REGISTRATION` line):
+   Register in the app, then close it again and confirm sign-ups are refused. The probe sends
+   an empty body, so it cannot create an account either way: `403` means registration is
+   closed; `422` means it is still open (check that the `ALLOW_REGISTRATION` line is gone and
+   that `IMAGE_TAG` in `.env` isn't pinned to an image from before registration was closed):
    ```
    sed -i '/^ALLOW_REGISTRATION=/d' .env && docker compose up -d
    curl -s -o /dev/null -w '%{http_code}\n' -X POST -H 'Content-Type: application/json' \
