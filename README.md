@@ -46,6 +46,7 @@ browser --https--> tailscale serve --> nginx --> FastAPI --> Postgres
   considered for each choice.
 - [Lessons learned](docs/lessons-learned.md): bugs and surprises found along the way, and what
   changed because of them.
+- [Devlog](docs/devlog.md): a dated log of each working session.
 
 ## Running locally
 

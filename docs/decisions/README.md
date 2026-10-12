@@ -19,5 +19,8 @@ See [record 1](0001-record-architecture-decisions.md) for the format.
 | 11 | [The production database lives in an external volume](0011-protected-database-volume.md) | 2026-10-11 |
 | 12 | [Encrypted offsite backups with restic, verified by restore drills](0012-encrypted-offsite-backups.md) | 2026-10-11 |
 | 13 | [Grow into a personal finance app, data safety first](0013-personal-finance-roadmap.md) | 2026-10-11 |
+| 14 | [Host the app on its own VM on the home Proxmox server](0014-dedicated-vm-on-proxmox.md) | 2026-10-12 |
+| 15 | [Mobile access through a home-screen web app](0015-mobile-access-as-home-screen-web-app.md) | 2026-10-12 |
+| 16 | [Monitor backups with healthchecks.io](0016-backup-monitoring-with-healthchecks.md) | 2026-10-12 |
 
 Bugs and surprises found along the way are in [lessons learned](../lessons-learned.md).

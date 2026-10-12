@@ -151,3 +151,38 @@ and the takeaway. Newest last. Design decisions themselves are in [decisions/](d
 **ShellCheck disagreed between laptop and CI** (2026-10-11)
 - The CI runner's preinstalled ShellCheck was newer and flagged code the local version
   accepted. CI and local runs now use the same pinned container, `koalaman/shellcheck:v0.11.0`.
+
+## Going live
+
+**`qm reboot` timed out on a brand-new VM** (2026-10-12)
+- *Cause:* the Ubuntu cloud-init template has Proxmox's guest agent option enabled, so Proxmox
+  asks an agent inside the VM to reboot it. The cloud image doesn't ship that agent.
+- *Fix:* `qm stop` and `qm start` for the first restart, then install `qemu-guest-agent` in the
+  VM. The setup guide now includes it.
+
+**Couldn't reach the new VM from outside the house** (2026-10-12)
+- *What happened:* the new VM had no Tailscale yet, and jumping through another machine's
+  Tailscale address failed with "connection refused" (that machine doesn't accept SSH).
+- *Fix:* log in from the Proxmox host's own shell, which is on the home network. The VM only
+  trusted the laptop's key, so the Proxmox host's public key was added through cloud-init and
+  the VM restarted to pick it up. Installing Tailscale was then the first thing done inside it.
+
+**restic said "invalid backend"** (2026-10-12)
+- *Cause:* the repository address was pasted as `https://...r2.cloudflarestorage.com/bucket`.
+  restic needs the protocol in front: `s3:https://...`.
+- *Takeaway:* the backup variables are named `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`
+  even though nothing uses Amazon. S3 is Amazon's storage protocol, and R2 and most other
+  providers speak it, so restic's S3 support uses the same variable names for all of them.
+
+**The backup container listed port 5432** (2026-10-12)
+- The backup image is built on the Postgres image, which declares port 5432. `docker compose ps`
+  shows it, but nothing publishes it to the host; only nginx has a host port. Cosmetic.
+
+**Enabling Tailscale Serve also offered Funnel** (2026-10-12)
+- *What happened:* the first `tailscale serve` asked to enable the feature in the admin console,
+  and Funnel was enabled there too.
+- *Why it matters:* Serve shares a service with your own devices; Funnel publishes it to the
+  whole internet. This app has open registration, so a public address would let anyone sign up.
+- *Check:* `tailscale serve status` and `tailscale funnel status` both said `(tailnet only)`, so
+  the app was not public. Funnel being allowed on the tailnet doesn't turn it on for a machine.
+
