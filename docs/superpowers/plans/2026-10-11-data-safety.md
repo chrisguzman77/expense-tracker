@@ -712,7 +712,7 @@ Expected: `backend`, `frontend`, `docker`, `backup` pass; `publish` skipped.
 
 ```bash
 for B in main dev; do
-  gh api -X PUT repos/chrisguzman77/expense-tracker/branches/$B/protection/required_status_checks \
+  gh api -X PATCH repos/chrisguzman77/expense-tracker/branches/$B/protection/required_status_checks \
     -F strict=false -f 'contexts[]=backend' -f 'contexts[]=frontend' -f 'contexts[]=docker' -f 'contexts[]=backup' \
     --jq '.contexts'
 done
