@@ -1,6 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { z } from "zod";
 import { useLogin } from "../api/auth";
 
@@ -52,9 +52,6 @@ export function LoginPage() {
           Log in
         </button>
       </form>
-      <p className="mt-4 text-sm">
-        No account? <Link to="/register" className="underline">Register</Link>
-      </p>
     </main>
   );
 }
