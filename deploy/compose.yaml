@@ -9,6 +9,8 @@ x-api-env: &api-env
   ENVIRONMENT: production
   DATABASE_URL: postgresql+psycopg://app:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@db:5432/expenses
   JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
+  # Registration is closed unless .env sets ALLOW_REGISTRATION=true (first install only).
+  ALLOW_REGISTRATION: ${ALLOW_REGISTRATION:-false}
 
 services:
   db:

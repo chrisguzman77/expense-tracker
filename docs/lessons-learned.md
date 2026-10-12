@@ -186,3 +186,18 @@ and the takeaway. Newest last. Design decisions themselves are in [decisions/](d
 - *Check:* `tailscale serve status` and `tailscale funnel status` both said `(tailnet only)`, so
   the app was not public. Funnel being allowed on the tailnet doesn't turn it on for a machine.
 
+## Closing registration
+
+**The check that registration was closed could have created an account** (final review, 2026-10-12)
+- *What happened:* the setup guide verified closure by posting a valid sign-up and expecting
+  `403`. If registration were still open (an older image still running, or the toggle line not
+  removed), that "check" would have registered a real user in the production database.
+- *Fix:* the probe posts an empty body. The registration gate runs before request validation,
+  so a closed endpoint answers `403` and an open one answers `422`; neither can create anything.
+- *Takeaway:* a verification step should be unable to cause the problem it checks for.
+
+**A default that every test overrides is untested** (final review, 2026-10-12)
+- The test fixture forces registration open so existing tests keep working, which meant
+  flipping the shipped default to "open" would have left the whole suite green. A one-line test
+  now pins the default by reading the setting's declared default, not a live settings object,
+  so the developer's own `.env` can't affect it.
