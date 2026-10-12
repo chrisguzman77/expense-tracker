@@ -39,10 +39,9 @@ run_backup() {
     "$BACKUP_IMG" "$@"
 }
 
-# snapshot_count [VOLUME]: number of pgdump snapshots in a repository volume.
-# shellcheck disable=SC2120  # optional VOLUME argument; current callers use the default
+# snapshot_count: number of pgdump snapshots in the $REPO volume.
 snapshot_count() {
-  REPO_OVERRIDE="${1:-$REPO}" run_backup restic snapshots --tag pgdump --json \
+  REPO_OVERRIDE="$REPO" run_backup restic snapshots --tag pgdump --json \
     | grep -o '"short_id"' | wc -l | tr -d ' '
 }
 
@@ -52,7 +51,7 @@ latest_snapshot_id() {
 }
 
 # hc_saw PATH: true if the fake healthchecks server received GET PATH.
-# Reads the whole log first: `docker logs | grep -q` can die of SIGPIPE under pipefail.
+# Reads the whole log first: piping `docker logs` into `grep -q` can die of SIGPIPE under pipefail.
 hc_saw() {
   local log
   log=$(docker logs "$HC" 2>&1)
@@ -113,7 +112,9 @@ http.server.HTTPServer(('', 8000), H).serve_forever()" >/dev/null
 }
 
 test_restic_supports_stdin_from_command() {
-  run_backup restic backup --help | grep -q -- '--stdin-from-command' \
+  local help
+  help=$(run_backup restic backup --help 2>&1)
+  grep -q -- '--stdin-from-command' <<<"$help" \
     || fail "restic in the image is too old for --stdin-from-command"
   pass "restic supports --stdin-from-command"
 }
@@ -197,10 +198,13 @@ test_scheduler_runs_jobs_with_cron_environment() {
     sleep 1
   done
   [ "$crond_up" = 1 ] || fail "crond is not running"
-  docker logs "$SCHED" 2>&1 | grep -q 'scheduler started' || fail "scheduler log missing 'scheduler started'"
-  docker exec "$SCHED" crontab -l | grep -q '^0 3 \* \* \* .*backup-now' \
+  local sched_log crontab_out
+  sched_log=$(docker logs "$SCHED" 2>&1)
+  grep -q 'scheduler started' <<<"$sched_log" || fail "scheduler log missing 'scheduler started'"
+  crontab_out=$(docker exec "$SCHED" crontab -l)
+  grep -q '^0 3 \* \* \* .*backup-now' <<<"$crontab_out" \
     || fail "nightly backup job missing"
-  docker exec "$SCHED" crontab -l | grep -q '^0 5 1 \* \* .*restore-drill' \
+  grep -q '^0 5 1 \* \* .*restore-drill' <<<"$crontab_out" \
     || fail "monthly drill job missing"
   # Retention keeps one snapshot per day, so a same-day run replaces the previous one:
   # compare the newest snapshot's id rather than the count.
