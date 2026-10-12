@@ -56,9 +56,10 @@ browser --https--> tailscale serve (VM, :443) --http--> 127.0.0.1:8080 nginx -->
      their ping URLs in `HC_BACKUP_URL` and `HC_DRILL_URL`. Set `TZ` to your timezone.
      `TZ` controls when the schedule runs, and a `TZ` exported in the VM user's shell overrides
      the value in `.env` (compose interpolation precedence), so set it only in `.env`.
-   - **Initialize the repository once:**
+   - **Initialize the repository once.** `--no-deps` is used because initializing the
+     repository only talks to R2 and doesn't need the database (whose volume doesn't exist yet):
      ```
-     docker compose run --rm backup restic init
+     docker compose run --rm --no-deps backup restic init
      ```
 
 7. **Create the database volume and start the stack.**
@@ -136,10 +137,21 @@ docker compose up -d
 Replace `latest` with a snapshot ID from `restic snapshots` to restore an older one.
 On startup, `migrate` applies any migrations newer than the backup.
 
-**If the VM is gone:** build a new one with the one-time setup above, reusing the same
-`RESTIC_REPOSITORY`, R2 token and `RESTIC_PASSWORD` (from your password manager) and skipping
-`restic init`. Create the volume, start only the database with `docker compose up -d db`, run
-the restore command above, then `docker compose up -d`.
+**If the VM is gone:** the repository in R2 already exists, so on a new VM:
+
+1. Follow one-time setup steps 1 to 6, reusing the same `RESTIC_REPOSITORY`, R2 token and
+   `RESTIC_PASSWORD` (from your password manager). **Skip `restic init`.**
+2. Do **not** run steps 7 and 8: they would migrate and back up an empty database, and that
+   backup would become the new `latest` snapshot.
+3. Instead, create the volume and restore into it:
+   ```
+   docker volume create expense-tracker-pgdata
+   docker compose up -d db
+   # run the restore command from this section (the docker compose run ... pg_restore one)
+   docker compose up -d
+   ```
+4. Then do step 9 (`tailscale serve`). Optionally run `docker compose run --rm backup restore-drill`
+   once to confirm.
 
 ## Useful commands
 

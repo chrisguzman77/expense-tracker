@@ -29,7 +29,7 @@ browser --https--> tailscale serve --> nginx --> FastAPI --> Postgres
 - **Migrations are checked.** CI runs `alembic check`, which fails if the models and the
   migrations disagree.
 - **The database can't be deleted by deploy tooling.** It lives in an external Docker volume
-  that `docker compose down -v` does not remove; if the volume is missing, startup fails
+  (`expense-tracker-pgdata`) that `docker compose down -v` does not remove; if the volume is missing, startup fails
   instead of silently creating an empty database.
 - **Backups are encrypted, offsite and verified.** A backup service streams `pg_dump` into
   restic every night. restic encrypts it before upload to Cloudflare R2 and refuses to record
