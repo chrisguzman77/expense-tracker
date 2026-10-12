@@ -93,10 +93,19 @@ jobs:
       - name: Build frontend image
         run: docker build -t expense-tracker-web:ci frontend
 
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: ShellCheck
+        run: shellcheck -x backup/*.sh backup/test/*.sh
+      - name: Backup image end-to-end tests
+        run: backup/test/e2e.sh
+
   publish:
     # Only after a merge lands on main, and only if every check passed.
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: [backend, frontend, docker]
+    needs: [backend, frontend, docker, backup]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -109,7 +118,7 @@ jobs:
         # Tags: the commit SHA (pin this in deploy/.env to roll back) and latest.
         # The source label links each package to this repo on GitHub.
         run: |
-          for pair in api:backend web:frontend; do
+          for pair in api:backend web:frontend backup:backup; do
             name="${pair%%:*}"; dir="${pair##*:}"
             image="ghcr.io/chrisguzman77/expense-tracker-$name"
             docker build \
