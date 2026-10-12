@@ -107,7 +107,19 @@ browser --https--> tailscale serve (VM, :443) --http--> 127.0.0.1:8080 nginx -->
    sudo tailscale serve --bg http://127.0.0.1:8080
    tailscale serve status
    ```
-   Open `https://<vm-name>.<tailnet>.ts.net` from any device on your tailnet and register.
+   Open `https://<vm-name>.<tailnet>.ts.net` from any device on your tailnet.
+
+   **Create your account.** Registration is closed by default. Open it just long enough to
+   sign up:
+   ```
+   echo 'ALLOW_REGISTRATION=true' >> .env && docker compose up -d
+   ```
+   Register in the app, then close it again and confirm a sign-up attempt is refused (`403`):
+   ```
+   sed -i '/^ALLOW_REGISTRATION=/d' .env && docker compose up -d
+   curl -s -o /dev/null -w '%{http_code}\n' -X POST -H 'Content-Type: application/json' \
+     -d '{"email":"probe@example.com","password":"longenough"}' http://127.0.0.1:8080/api/auth/register
+   ```
    If Tailscale asks you to enable Serve in the admin console, do so. Do **not** use
    `tailscale funnel` for this app: Funnel publishes it to the whole internet, where anyone
    could register. `tailscale serve status` should say `(tailnet only)`.
@@ -241,6 +253,7 @@ On startup, `migrate` applies any migrations newer than the backup.
    docker compose run --rm backup bash -c 'set -o pipefail; restic dump --tag pgdump latest /expenses.dump | pg_restore --clean --if-exists --no-owner --single-transaction -d expenses'
    docker compose up -d
    ```
+   No registration is needed; the restore brings your account back.
 4. Then do step 9 (`tailscale serve`). Optionally run `docker compose run --rm backup restore-drill`
    once to confirm.
 
