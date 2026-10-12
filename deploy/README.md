@@ -164,16 +164,7 @@ docker compose logs backup
 Use this after data loss or a bad migration. It replaces the live database's contents with the
 backup's, and discards every change made after that backup.
 
-```
-docker compose stop api web backup
-docker compose run --rm backup bash -c 'set -o pipefail; restic dump --tag pgdump latest /expenses.dump | pg_restore --clean --if-exists --no-owner --single-transaction -d expenses'
-docker compose up -d
-```
-
-`--single-transaction` means a failed restore leaves the database unchanged.
-
-If you might want the changes made since the last backup, first save a safety copy of the live
-database (run this before the `stop` above, while `db` is up, or run `docker compose up -d db` first):
+Optional first step: if you might want changes made since the last backup, save a safety copy:
 
 ```
 docker compose run --rm backup bash -c 'restic backup --host expense-tracker --tag pre-restore --stdin-filename expenses.dump --stdin-from-command -- pg_dump --format=custom'
@@ -181,9 +172,17 @@ docker compose run --rm backup bash -c 'restic backup --host expense-tracker --t
 
 It uses its own tag because the nightly retention only prunes `pgdump` snapshots, so this copy is
 never pruned automatically and doesn't become the restore's `latest`. (Do not use `backup-now`
-for this: its retention would replace today's good snapshot.) `pre-restore` snapshots stay until
+for this: its retention can replace today's good snapshot.) `pre-restore` snapshots stay until
 removed; delete one when no longer needed with
 `docker compose run --rm backup restic forget <id> --prune`.
+
+```
+docker compose stop api web backup
+docker compose run --rm backup bash -c 'set -o pipefail; restic dump --tag pgdump latest /expenses.dump | pg_restore --clean --if-exists --no-owner --single-transaction -d expenses'
+docker compose up -d
+```
+
+`--single-transaction` means a failed restore leaves the database unchanged.
 
 To restore an older snapshot instead of the newest, replace `latest` with a snapshot ID from
 `docker compose run --rm backup restic snapshots`.
