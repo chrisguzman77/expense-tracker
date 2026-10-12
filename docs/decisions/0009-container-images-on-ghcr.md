@@ -13,7 +13,11 @@ a tagging scheme that makes rollbacks easy.
 - CI's `publish` job pushes `ghcr.io/chrisguzman77/expense-tracker-{api,web,backup}` only after
   a push to `main` and only when every check passed.
 - Each image is tagged with the commit SHA and `latest`. The production compose file reads
-  `IMAGE_TAG`, so a rollback is changing one value in `.env`.
+  `IMAGE_TAG` for the app (api, web, migrate), so a rollback is changing one value in `.env`.
+- The backup service reads its own `BACKUP_IMAGE_TAG` (default `latest`), decided 2026-10-12.
+  The backup image only exists for commits from 2026-10-12 onward, so a shared tag would make
+  rolling the app back to an older commit fail for every service. Separate tags also keep the
+  newest backup scripts running while the app is rolled back.
 - Packages are **public**. The source repository is already public and the images contain no
   secrets: both `.dockerignore` files exclude `.env`, and secrets are injected at runtime from
   the VM's `.env`. A published image was pulled anonymously and checked for secrets.

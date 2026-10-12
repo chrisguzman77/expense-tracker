@@ -78,10 +78,38 @@ and the takeaway. Newest last. Design decisions themselves are in [decisions/](d
   `docker compose run --rm backup restic init` before the database volume existed, so compose
   tried to start Postgres and stopped at the missing external volume. The recovery-from-VM-loss
   instructions also would have backed up the new, empty database before restoring the real one.
-- *Fix:* `--no-deps` for `restic init`, which doesn't need the database, and a separate,
-  ordered recovery procedure.
+- *First fix, and why it was wrong:* `--no-deps` for `restic init`, on the assumption that
+  compose skips the database when told not to start dependencies. Tested in a scratch project
+  during the final review: compose still validates every external volume in the file and
+  fails. The setup now creates the volume before `restic init`.
 - *Takeaway:* a protection that fails loudly also has to be accounted for in every procedure
-  that touches it. Runbooks need the same review as code.
+  that touches it. Runbooks need the same review as code, and a reviewer's "I assumed this
+  works" is a test to run, not a fact.
+
+**The documented restore could leave the database half-deleted** (final review, 2026-10-12)
+- *Cause:* `pg_restore --clean` drops objects first and restores after. If the restore fails
+  partway (a truncated download, a wrong snapshot ID), the live database is left broken.
+  Restoring after a bad migration also re-applied the same migration on the next start.
+- *Fix:* `--single-transaction`, so a failed restore changes nothing; `set -o pipefail` in the
+  restore pipe; a note to roll back `IMAGE_TAG` before restarting after a bad migration.
+
+**A "safety backup" before restoring could delete the restore point** (final review, 2026-10-12)
+- *What happened:* the first fix for the restore procedure advised running a normal backup
+  before restoring, to keep recent changes.
+- *Cause:* that backup ends with retention, which is designed to keep one snapshot per day, so
+  it can prune the morning's snapshot, which is exactly the good one the restore needs. In a
+  test with a brand-new repository restic kept both, so whether it happens depends on how much
+  history exists. An instruction that is only safe sometimes isn't safe.
+- *Fix:* the pre-restore safety copy uses its own `pre-restore` tag, which retention never
+  prunes and the restore's `latest` ignores.
+- *Takeaway:* every new instruction has to be checked against the system's other automatic
+  behavior. A fix to one step can quietly break another.
+
+**Rolling back to an older build would have broken every service** (final review, 2026-10-12)
+- *Cause:* the backup image shared the app's `IMAGE_TAG`, but no backup image exists for
+  commits from before it was introduced, so pulling an older tag failed for the whole stack.
+- *Fix:* the backup service has its own `BACKUP_IMAGE_TAG`. See
+  [decision 9](decisions/0009-container-images-on-ghcr.md).
 
 **GitHub's API: required checks are updated with PATCH** (2026-10-11)
 - `PUT .../protection/required_status_checks` returns 404. The endpoint only accepts `PATCH`.
