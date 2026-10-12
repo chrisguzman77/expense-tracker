@@ -62,5 +62,33 @@ services:
     ports:
       - "127.0.0.1:8080:80"
 
+  # Nightly encrypted backups to Cloudflare R2 and a monthly restore drill (see README).
+  backup:
+    image: ghcr.io/chrisguzman77/expense-tracker-backup:${BACKUP_IMAGE_TAG:-latest}
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      TZ: ${TZ:-UTC}
+      PGHOST: db
+      PGUSER: app
+      PGDATABASE: expenses
+      PGPASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      RESTIC_REPOSITORY: ${RESTIC_REPOSITORY:?set RESTIC_REPOSITORY in .env}
+      RESTIC_PASSWORD: ${RESTIC_PASSWORD:?set RESTIC_PASSWORD in .env}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:?set AWS_ACCESS_KEY_ID in .env}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:?set AWS_SECRET_ACCESS_KEY in .env}
+      # R2 uses the region name "auto".
+      AWS_DEFAULT_REGION: auto
+      HC_BACKUP_URL: ${HC_BACKUP_URL:?set HC_BACKUP_URL in .env}
+      HC_DRILL_URL: ${HC_DRILL_URL:?set HC_DRILL_URL in .env}
+
 volumes:
+  # Created once by hand: `docker volume create expense-tracker-pgdata` (see README).
+  # Compose never removes external volumes, so `docker compose down -v` can't delete the
+  # database, and `up` refuses to start if the volume is missing instead of creating an
+  # empty one.
   pgdata:
+    external: true
+    name: expense-tracker-pgdata
