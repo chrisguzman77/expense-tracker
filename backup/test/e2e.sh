@@ -73,6 +73,15 @@ class H(http.server.BaseHTTPRequestHandler):
         self.send_header('Content-Length', '0')
         self.end_headers()
 http.server.HTTPServer(('', 8000), H).serve_forever()" >/dev/null
+  local hc_ready=0
+  for _ in $(seq 1 30); do
+    if docker exec "$HC" python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/ready')" >/dev/null 2>&1; then
+      hc_ready=1
+      break
+    fi
+    sleep 1
+  done
+  [ "$hc_ready" = 1 ] || fail "fake healthchecks server did not become ready"
   # The image only enables TCP after its init phase, so this waits for the real server.
   for _ in $(seq 1 60); do
     docker exec "$DB" psql -h 127.0.0.1 -U app -d expenses -c 'select 1' >/dev/null 2>&1 && break
@@ -121,11 +130,12 @@ test_backup_fails_loudly_when_db_unreachable() {
 }
 
 test_snapshots_share_a_fixed_host() {
+  local before hosts
+  before=$(latest_snapshot_id)
   run_backup backup-now >/dev/null || fail "second backup-now exited non-zero"
-  local hosts
+  [ "$(latest_snapshot_id)" != "$before" ] || fail "second backup-now produced no new latest snapshot"
   hosts=$(run_backup restic snapshots --tag pgdump --json | grep -o '"hostname":"[^"]*"' | sort -u)
   [ "$hosts" = '"hostname":"expense-tracker"' ] || fail "snapshots do not share the fixed host: $hosts"
-  [ "$(snapshot_count)" = 2 ] || fail "expected 2 snapshots, got $(snapshot_count)"
   pass "snapshots share a fixed host so retention groups them"
 }
 
@@ -172,8 +182,16 @@ test_scheduler_runs_jobs_with_cron_environment() {
     -e RESTIC_REPOSITORY=/repo -e RESTIC_PASSWORD="$RESTIC_PW" \
     -e PGHOST="$DB" -e PGUSER=app -e PGPASSWORD="$PGPASS" -e PGDATABASE=expenses \
     "$BACKUP_IMG" >/dev/null
-  sleep 2
-  docker exec "$SCHED" pgrep crond >/dev/null || fail "crond is not running"
+  local crond_up=0
+  for _ in $(seq 1 15); do
+    if docker exec "$SCHED" pgrep crond >/dev/null 2>&1; then
+      crond_up=1
+      break
+    fi
+    sleep 1
+  done
+  [ "$crond_up" = 1 ] || fail "crond is not running"
+  docker logs "$SCHED" 2>&1 | grep -q 'scheduler started' || fail "scheduler log missing 'scheduler started'"
   docker exec "$SCHED" crontab -l | grep -q '^0 3 \* \* \* .*backup-now' \
     || fail "nightly backup job missing"
   docker exec "$SCHED" crontab -l | grep -q '^0 5 1 \* \* .*restore-drill' \
