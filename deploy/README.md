@@ -112,7 +112,7 @@ browser --https--> tailscale serve (VM, :443) --http--> 127.0.0.1:8080 nginx -->
    **Create your account.** Registration is closed by default. Open it just long enough to
    sign up:
    ```
-   echo 'ALLOW_REGISTRATION=true' >> .env && docker compose up -d
+   printf '\nALLOW_REGISTRATION=true\n' >> .env && docker compose up -d
    ```
    Register in the app, then close it again and confirm a sign-up attempt is refused (`403`):
    ```
@@ -120,7 +120,8 @@ browser --https--> tailscale serve (VM, :443) --http--> 127.0.0.1:8080 nginx -->
    curl -s -o /dev/null -w '%{http_code}\n' -X POST -H 'Content-Type: application/json' \
      -d '{"email":"probe@example.com","password":"longenough"}' http://127.0.0.1:8080/api/auth/register
    ```
-   If Tailscale asks you to enable Serve in the admin console, do so. Do **not** use
+
+   If the probe prints `502`, the app is still restarting; wait a few seconds and run it again. If Tailscale asks you to enable Serve in the admin console, do so. Do **not** use
    `tailscale funnel` for this app: Funnel publishes it to the whole internet, where anyone
    could register. `tailscale serve status` should say `(tailnet only)`.
 
@@ -254,7 +255,8 @@ On startup, `migrate` applies any migrations newer than the backup.
    docker compose up -d
    ```
    No registration is needed; the restore brings your account back.
-4. Then do step 9 (`tailscale serve`). Optionally run `docker compose run --rm backup restore-drill`
+4. Then do only the `tailscale serve` part of step 9, and skip "Create your account", because the
+   restored database already has it. Optionally run `docker compose run --rm backup restore-drill`
    once to confirm.
 
 ## Useful commands
