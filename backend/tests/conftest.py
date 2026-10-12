@@ -3,6 +3,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
+from app.config import settings
 from app.database import Base, get_db
 from app.main import app
 
@@ -16,6 +17,12 @@ def schema():
     Base.metadata.create_all(engine)
     yield
     Base.metadata.drop_all(engine)
+
+
+@pytest.fixture(autouse=True)
+def registration_open(monkeypatch):
+    # Production defaults to closed; most tests sign up through the endpoint.
+    monkeypatch.setattr(settings, "allow_registration", True)
 
 
 @pytest.fixture

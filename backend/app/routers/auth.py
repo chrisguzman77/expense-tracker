@@ -23,7 +23,18 @@ def set_auth_cookie(response: Response, token: str) -> None:
     )
 
 
-@router.post("/register", response_model=UserRead, status_code=201)
+def require_registration_open() -> None:
+    # Deployment configuration, not a business rule, so it is enforced here.
+    if not settings.allow_registration:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Registration is closed")
+
+
+@router.post(
+    "/register",
+    response_model=UserRead,
+    status_code=201,
+    dependencies=[Depends(require_registration_open)],
+)
 def register(body: UserCreate, response: Response, db: Session = Depends(get_db)):
     try:
         user = user_service.register(db, body.email, body.password)
