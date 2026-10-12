@@ -24,8 +24,8 @@ log "backing up database ${PGDATABASE} on ${PGHOST}"
 # Fixed --host: container hostnames are random, and forget groups snapshots by host.
 restic backup --host expense-tracker --tag pgdump --stdin-filename expenses.dump --stdin-from-command -- \
   pg_dump --format=custom
-restic forget --tag pgdump --keep-daily 7 --keep-weekly 4 --keep-monthly 6 --prune
+restic forget --retry-lock 10m --tag pgdump --keep-daily 7 --keep-weekly 4 --keep-monthly 6 --prune
 if [ "$(date +%u)" = 7 ]; then
   log "weekly integrity check"
-  restic check --read-data-subset=10%
+  restic check --retry-lock 10m --read-data-subset=10%
 fi

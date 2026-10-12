@@ -64,7 +64,7 @@ services:
 
   # Nightly encrypted backups to Cloudflare R2 and a monthly restore drill (see README).
   backup:
-    image: ghcr.io/chrisguzman77/expense-tracker-backup:${IMAGE_TAG:-latest}
+    image: ghcr.io/chrisguzman77/expense-tracker-backup:${BACKUP_IMAGE_TAG:-latest}
     restart: unless-stopped
     depends_on:
       db:

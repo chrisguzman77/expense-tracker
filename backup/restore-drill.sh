@@ -30,7 +30,7 @@ hc_ping "${HC_DRILL_URL:-}" /start
 dropdb --if-exists "$DRILL_DB"
 createdb "$DRILL_DB"
 log "restoring latest snapshot into $DRILL_DB"
-restic dump --tag pgdump latest /expenses.dump \
+restic dump --retry-lock 10m --tag pgdump latest /expenses.dump \
   | pg_restore --no-owner --exit-on-error -d "$DRILL_DB"
 
 for table in users categories expenses alembic_version; do

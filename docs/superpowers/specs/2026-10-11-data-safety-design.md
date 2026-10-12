@@ -59,7 +59,9 @@ silently starting an empty database.
 with the same `<sha>` and `latest` tags as the other images.
 
 **Backup service.** New `backup` service in `deploy/compose.yaml`, `restart: unless-stopped`,
-`depends_on: db (service_healthy)`, no published ports, image tag from `IMAGE_TAG`.
+`depends_on: db (service_healthy)`, no published ports, image tag from `BACKUP_IMAGE_TAG` (default `latest`). It is separate from
+`IMAGE_TAG` so rolling the app back to a commit that predates the backup image doesn't break the stack
+or change the backup scripts.
 
 **Secrets** added to `deploy/.env` and documented in `deploy/.env.example`:
 
@@ -123,7 +125,8 @@ The live `expenses` database is only read.
 **Disaster recovery** is a documented manual procedure in `deploy/README.md`, not a script:
 
 1. `docker compose stop api web backup`
-2. `docker compose run --rm backup sh -c 'restic dump --tag pgdump <snapshot|latest> /expenses.dump | pg_restore --clean --if-exists --no-owner -d expenses'`
+2. `docker compose run --rm backup bash -c 'set -o pipefail; restic dump --tag pgdump <snapshot|latest> /expenses.dump | pg_restore --clean --if-exists --no-owner --single-transaction -d expenses'`
+   (`--single-transaction` makes a failed restore leave the database unchanged.)
 3. `docker compose up -d` (migrate applies anything newer than the backup)
 
 For a lost VM: rebuild from the runbook, create the volume, start `db` only, restore as above,
@@ -161,3 +164,7 @@ The `publish` job also pushes the backup image.
 - **Local disk:** the developer Mac's data volume is ~99% full and Docker's storage went
   read-only. About 5 GB must be freed before building images locally; CI verifies regardless.
 - **PR #17** (deploy runbook) touches `deploy/README.md` and should be merged before this work.
+- **Offsite backups are deletable from a compromised VM.** The R2 token (Object Read & Write)
+  and `RESTIC_PASSWORD` both live on the VM, and pruning needs delete permission. Accepted for a
+  Tailscale-only personal app; a second copy elsewhere, or moving pruning off the VM behind a
+  bucket lock, would close it.

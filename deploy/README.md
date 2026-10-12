@@ -52,19 +52,22 @@ browser --https--> tailscale serve (VM, :443) --http--> 127.0.0.1:8080 nginx -->
    - **Encryption key:** `openssl rand -hex 32` into `RESTIC_PASSWORD`, and save the same value
      in your password manager now. Without it, no backup can ever be restored.
    - **Monitoring:** at healthchecks.io create two checks. "expense-tracker backup": period
-     1 day, grace 3 hours. "expense-tracker restore drill": period 31 days, grace 1 day. Put
-     their ping URLs in `HC_BACKUP_URL` and `HC_DRILL_URL`. Set `TZ` to your timezone.
-     `TZ` controls when the schedule runs, and a `TZ` exported in the VM user's shell overrides
-     the value in `.env` (compose interpolation precedence), so set it only in `.env`.
-   - **Initialize the repository once.** `--no-deps` is used because initializing the
-     repository only talks to R2 and doesn't need the database (whose volume doesn't exist yet):
+     1 day, grace 3 hours. "expense-tracker restore drill": period 31 days, grace 1 day.
+     Put their ping URLs in `HC_BACKUP_URL` and `HC_DRILL_URL`. Set `TZ` to your timezone.
+     `TZ` controls when the schedule runs, and a `TZ` exported in the VM user's shell
+     overrides the value in `.env` (compose interpolation precedence), so set it only in
+     `.env`.
+   - **Create the database volume, then initialize the repository once.** Compose refuses to
+     run any command while an external volume is missing, even with `--no-deps`, so the volume
+     comes first. `--no-deps` keeps `db` from starting, since initializing the repository only
+     talks to R2:
      ```
+     docker volume create expense-tracker-pgdata
      docker compose run --rm --no-deps backup restic init
      ```
 
-7. **Create the database volume and start the stack.**
+7. **Start the stack.**
    ```
-   docker volume create expense-tracker-pgdata
    docker compose pull
    docker compose up -d
    docker compose ps -a      # migrate: Exited (0); db, api: healthy; web, backup: Up
@@ -85,6 +88,37 @@ browser --https--> tailscale serve (VM, :443) --http--> 127.0.0.1:8080 nginx -->
    ```
    Open `https://<vm-name>.<tailnet>.ts.net` from any device on your tailnet and register.
 
+## Upgrading a VM set up before backups existed
+
+An earlier version of this compose file kept the database in the compose-managed volume
+`expense-tracker_pgdata` (underscore). This version uses the external volume
+`expense-tracker-pgdata` (hyphen). Without copying the data across, the new stack starts with an
+empty database, even though the old data is untouched. First check whether you need this:
+```
+docker volume ls | grep expense-tracker_pgdata
+```
+If nothing is listed, skip this section. Otherwise, from `~/expense-tracker`:
+
+1. Stop the stack: `docker compose stop`
+2. Download the new `compose.yaml`, and fetch `.env.example` under another name to see the new
+   variables, without overwriting `.env`:
+   ```
+   base=https://raw.githubusercontent.com/chrisguzman77/expense-tracker/main/deploy
+   curl -fsSLO "$base/compose.yaml"
+   curl -fsSL "$base/.env.example" -o .env.new
+   ```
+3. Create the new volume and copy the data into it:
+   ```
+   docker volume create expense-tracker-pgdata
+   docker run --rm -v expense-tracker_pgdata:/from -v expense-tracker-pgdata:/to alpine cp -a /from/. /to/
+   ```
+4. Add the backup variables to `.env` and initialize the repository: one-time setup step 6,
+   including `restic init` with `--no-deps`. Skip the volume creation there, you just did it.
+5. `docker compose pull && docker compose up -d`
+6. Confirm your data is there in the app.
+7. Run `docker compose run --rm backup backup-now` and `docker compose run --rm backup restore-drill`.
+8. Only after both succeed: `docker volume rm expense-tracker_pgdata`
+
 ## Deploying a new version
 
 Merge `dev` into `main`, wait for the CI `publish` job, then on the VM:
@@ -104,8 +138,10 @@ Every image is also tagged with the commit SHA it was built from. To run an olde
 ```
 IMAGE_TAG=<full commit sha from main>
 ```
-then `docker compose up -d`. Caveat: this rolls back code, not the database. If the newer version
-ran a migration, the older code may not match the schema. Restore from a backup in that case.
+then `docker compose up -d`. `IMAGE_TAG` rolls back the app (api, web, migrate); the backup
+service follows `BACKUP_IMAGE_TAG` instead, so an app rollback doesn't change the backup scripts.
+Caveat: this rolls back code, not the database. If the newer version ran a migration, the older
+code may not match the schema. Restore from a backup in that case (see below).
 
 ## Backups
 
@@ -125,29 +161,48 @@ docker compose logs backup
 
 ## Restoring from a backup
 
-Use this after data loss or a bad migration. It replaces the live database's contents.
+Use this after data loss or a bad migration. It replaces the live database's contents with the
+backup's, and discards every change made after that backup.
 
 ```
 docker compose stop api web backup
-docker compose run --rm backup bash -c \
-  'restic dump --tag pgdump latest /expenses.dump | pg_restore --clean --if-exists --no-owner -d expenses'
+docker compose run --rm backup bash -c 'set -o pipefail; restic dump --tag pgdump latest /expenses.dump | pg_restore --clean --if-exists --no-owner --single-transaction -d expenses'
 docker compose up -d
 ```
 
-Replace `latest` with a snapshot ID from `restic snapshots` to restore an older one.
+`--single-transaction` means a failed restore leaves the database unchanged.
+
+If you might want the changes made since the last backup, run
+`docker compose run --rm backup backup-now` first. That safety backup then becomes `latest`, so
+pick the snapshot to restore by ID from `docker compose run --rm backup restic snapshots`
+and use it in place of `latest`.
+
 On startup, `migrate` applies any migrations newer than the backup.
+
+**After a bad migration:**
+- Set `IMAGE_TAG` in `.env` to the commit from before the migration before running
+  `docker compose up -d`, otherwise `migrate` re-applies the same migration.
+- `--clean` only drops objects that exist in the backup, so tables or columns created by the newer
+  migration survive the restore. For a clean slate, with the stack stopped, recreate the database
+  first (`db` must be running), then restore:
+  ```
+  docker compose up -d db
+  docker compose exec db dropdb -U app expenses
+  docker compose exec db createdb -U app expenses
+  ```
 
 **If the VM is gone:** the repository in R2 already exists, so on a new VM:
 
 1. Follow one-time setup steps 1 to 6, reusing the same `RESTIC_REPOSITORY`, R2 token and
-   `RESTIC_PASSWORD` (from your password manager). **Skip `restic init`.**
+   `RESTIC_PASSWORD` (from your password manager). **Skip `restic init`** (but do create the
+   volume): the R2 bucket, token and both healthchecks.io checks already exist and must not be
+   recreated.
 2. Do **not** run steps 7 and 8: they would migrate and back up an empty database, and that
    backup would become the new `latest` snapshot.
-3. Instead, create the volume and restore into it:
+3. Instead, restore into the volume step 6 created:
    ```
-   docker volume create expense-tracker-pgdata
    docker compose up -d db
-   # run the restore command from this section (the docker compose run ... pg_restore one)
+   docker compose run --rm backup bash -c 'set -o pipefail; restic dump --tag pgdump latest /expenses.dump | pg_restore --clean --if-exists --no-owner --single-transaction -d expenses'
    docker compose up -d
    ```
 4. Then do step 9 (`tailscale serve`). Optionally run `docker compose run --rm backup restore-drill`
