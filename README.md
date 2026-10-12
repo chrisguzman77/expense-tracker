@@ -40,6 +40,13 @@ browser --https--> tailscale serve --> nginx --> FastAPI --> Postgres
 - **Deploys are reproducible.** Merging to `main` publishes images tagged with the commit SHA;
   a rollback is changing one variable. Branch protection requires every CI check to pass.
 
+## Design notes
+
+- [Decision records](docs/decisions/): why the system is built this way, with the alternatives
+  considered for each choice.
+- [Lessons learned](docs/lessons-learned.md): bugs and surprises found along the way, and what
+  changed because of them.
+
 ## Running locally
 
 Requires Docker, [uv](https://docs.astral.sh/uv/) and Node 24.
