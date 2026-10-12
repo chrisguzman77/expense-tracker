@@ -1,6 +1,13 @@
 # shellcheck shell=bash
 # Shared helpers for backup-now and restore-drill. Sourced, never executed.
 
+# Under cron the job starts with an almost empty environment; the entrypoint saved the
+# container's environment here when the scheduler started.
+if [ -f /run/backup.env ]; then
+  # shellcheck disable=SC1091
+  source /run/backup.env
+fi
+
 log() { echo "[$(date '+%Y-%m-%dT%H:%M:%S%z')] $*"; }
 
 # hc_ping URL [SUFFIX]: best-effort healthchecks.io ping. Skipped when URL is empty;

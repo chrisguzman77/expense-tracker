@@ -45,6 +45,11 @@ snapshot_count() {
     | grep -o '"short_id"' | wc -l | tr -d ' '
 }
 
+# latest_snapshot_id: id of the newest pgdump snapshot (restic lists oldest first).
+latest_snapshot_id() {
+  run_backup restic snapshots --tag pgdump --json | grep -o '"short_id":"[^"]*"' | tail -1
+}
+
 # hc_saw PATH: true if the fake healthchecks server received GET PATH.
 hc_saw() { docker logs "$HC" 2>&1 | grep -q "\"GET $1 HTTP"; }
 
@@ -155,6 +160,35 @@ test_restore_drill_rejects_backup_with_empty_tables() {
   pass "restore-drill rejects a backup whose tables came back empty"
 }
 
+test_timezone_is_honored() {
+  local tz
+  tz=$(docker run --rm -e TZ=America/Chicago "$BACKUP_IMG" date +%Z)
+  case "$tz" in CST|CDT) ;; *) fail "TZ not honored, got $tz" ;; esac
+  pass "TZ is honored"
+}
+
+test_scheduler_runs_jobs_with_cron_environment() {
+  docker run -d --name "$SCHED" --network "$NET" -v "$REPO:/repo" \
+    -e RESTIC_REPOSITORY=/repo -e RESTIC_PASSWORD="$RESTIC_PW" \
+    -e PGHOST="$DB" -e PGUSER=app -e PGPASSWORD="$PGPASS" -e PGDATABASE=expenses \
+    "$BACKUP_IMG" >/dev/null
+  sleep 2
+  docker exec "$SCHED" pgrep crond >/dev/null || fail "crond is not running"
+  docker exec "$SCHED" crontab -l | grep -q '^0 3 \* \* \* .*backup-now' \
+    || fail "nightly backup job missing"
+  docker exec "$SCHED" crontab -l | grep -q '^0 5 1 \* \* .*restore-drill' \
+    || fail "monthly drill job missing"
+  # Retention keeps one snapshot per day, so a same-day run replaces the previous one:
+  # compare the newest snapshot's id rather than the count.
+  local before
+  before=$(latest_snapshot_id)
+  # cron starts jobs with an empty environment; reproduce that exactly.
+  docker exec "$SCHED" env -i /usr/local/bin/backup-now >/dev/null \
+    || fail "backup-now failed under cron's empty environment"
+  [ "$(latest_snapshot_id)" != "$before" ] || fail "cron-style run created no snapshot"
+  pass "scheduler runs crond with both jobs, and jobs work with an empty environment"
+}
+
 setup
 test_restic_supports_stdin_from_command
 test_backup_creates_snapshot_and_pings
@@ -163,4 +197,6 @@ test_snapshots_share_a_fixed_host
 test_restore_drill_passes_and_cleans_up
 test_restore_drill_fails_without_snapshots
 test_restore_drill_rejects_backup_with_empty_tables
+test_timezone_is_honored
+test_scheduler_runs_jobs_with_cron_environment
 echo "ALL BACKUP E2E TESTS PASSED"
