@@ -48,7 +48,7 @@ snapshot_count() {
 # hc_saw PATH: true if the fake healthchecks server received GET PATH.
 hc_saw() { docker logs "$HC" 2>&1 | grep -q "\"GET $1 HTTP"; }
 
-psql_db() { docker exec "$DB" psql -U app -d "$1" -tAc "$2"; }
+psql_db() { docker exec -e PGOPTIONS="-c client_min_messages=warning" "$DB" psql -U app -d "$1" -tAc "$2"; }
 
 setup() {
   cleanup
@@ -124,9 +124,43 @@ test_snapshots_share_a_fixed_host() {
   pass "snapshots share a fixed host so retention groups them"
 }
 
+test_restore_drill_passes_and_cleans_up() {
+  run_backup restore-drill >/dev/null || fail "restore-drill exited non-zero"
+  [ "$(psql_db postgres "select count(*) from pg_database where datname = 'expenses_restore_drill'")" = 0 ] \
+    || fail "scratch database was not dropped"
+  hc_saw /drill/start || fail "no /drill/start ping"
+  hc_saw /drill || fail "no /drill success ping"
+  pass "restore-drill restores the latest snapshot, checks it, and drops the scratch db"
+}
+
+test_restore_drill_fails_without_snapshots() {
+  if REPO_OVERRIDE="$EMPTY_REPO" run_backup restore-drill >/dev/null 2>&1; then
+    fail "restore-drill succeeded with no snapshots"
+  fi
+  hc_saw /drill/fail || fail "no /drill/fail ping"
+  pass "restore-drill fails and pings /fail when there is nothing to restore"
+}
+
+test_restore_drill_rejects_backup_with_empty_tables() {
+  psql_db postgres "drop database if exists hollow" >/dev/null
+  psql_db postgres "create database hollow" >/dev/null
+  docker exec "$DB" sh -c 'pg_dump -U app --schema-only expenses | psql -q -U app -d hollow' >/dev/null
+  PGDATABASE_OVERRIDE=hollow REPO_OVERRIDE="$HOLLOW_REPO" run_backup backup-now >/dev/null \
+    || fail "could not back up the hollow database"
+  local out
+  if out=$(REPO_OVERRIDE="$HOLLOW_REPO" run_backup restore-drill 2>&1); then
+    fail "restore-drill accepted a backup whose tables are empty"
+  fi
+  grep -q "restored empty" <<<"$out" || fail "drill failed for the wrong reason: $out"
+  pass "restore-drill rejects a backup whose tables came back empty"
+}
+
 setup
 test_restic_supports_stdin_from_command
 test_backup_creates_snapshot_and_pings
 test_backup_fails_loudly_when_db_unreachable
 test_snapshots_share_a_fixed_host
+test_restore_drill_passes_and_cleans_up
+test_restore_drill_fails_without_snapshots
+test_restore_drill_rejects_backup_with_empty_tables
 echo "ALL BACKUP E2E TESTS PASSED"
