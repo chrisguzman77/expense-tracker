@@ -52,7 +52,12 @@ latest_snapshot_id() {
 }
 
 # hc_saw PATH: true if the fake healthchecks server received GET PATH.
-hc_saw() { docker logs "$HC" 2>&1 | grep -q "\"GET $1 HTTP"; }
+# Reads the whole log first: `docker logs | grep -q` can die of SIGPIPE under pipefail.
+hc_saw() {
+  local log
+  log=$(docker logs "$HC" 2>&1)
+  grep -q "\"GET $1 HTTP" <<<"$log"
+}
 
 psql_db() { docker exec -e PGOPTIONS="-c client_min_messages=warning" "$DB" psql -U app -d "$1" -tAc "$2"; }
 
