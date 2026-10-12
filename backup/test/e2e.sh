@@ -60,16 +60,27 @@ setup() {
     -e POSTGRES_PASSWORD="$PGPASS" -e POSTGRES_DB=expenses postgres:16 >/dev/null
   # Stand-in for healthchecks.io: logs every request line to stderr.
   docker run -d --name "$HC" --network "$NET" python:3.12-alpine \
-    python -u -m http.server 8000 >/dev/null
+    python -u -c "
+import http.server
+class H(http.server.BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header('Content-Length', '0')
+        self.end_headers()
+http.server.HTTPServer(('', 8000), H).serve_forever()" >/dev/null
   # The image only enables TCP after its init phase, so this waits for the real server.
   for _ in $(seq 1 60); do
     docker exec "$DB" psql -h 127.0.0.1 -U app -d expenses -c 'select 1' >/dev/null 2>&1 && break
     sleep 1
   done
-  docker run --rm --network "$NET" \
+  docker exec "$DB" psql -h 127.0.0.1 -U app -d expenses -c 'select 1' >/dev/null 2>&1 \
+    || fail "postgres did not become ready"
+  local migrate_out
+  migrate_out=$(docker run --rm --network "$NET" \
     -e DATABASE_URL="postgresql+psycopg://app:$PGPASS@$DB:5432/expenses" \
     -e JWT_SECRET=e2e-only-jwt-secret-at-least-32-bytes-long \
-    "$API_IMG" uv run --no-sync alembic upgrade head >/dev/null 2>&1
+    "$API_IMG" uv run --no-sync alembic upgrade head 2>&1) \
+    || fail "alembic migration failed: $migrate_out"
   psql_db expenses "
     insert into users (email, hashed_password) values ('e2e@example.com', 'x');
     insert into categories (user_id, name) select id, 'Food' from users;
@@ -104,8 +115,18 @@ test_backup_fails_loudly_when_db_unreachable() {
   pass "backup-now fails, records no snapshot, and pings /fail when the db is unreachable"
 }
 
+test_snapshots_share_a_fixed_host() {
+  run_backup backup-now >/dev/null || fail "second backup-now exited non-zero"
+  local hosts
+  hosts=$(run_backup restic snapshots --tag pgdump --json | grep -o '"hostname":"[^"]*"' | sort -u)
+  [ "$hosts" = '"hostname":"expense-tracker"' ] || fail "snapshots do not share the fixed host: $hosts"
+  [ "$(snapshot_count)" = 2 ] || fail "expected 2 snapshots, got $(snapshot_count)"
+  pass "snapshots share a fixed host so retention groups them"
+}
+
 setup
 test_restic_supports_stdin_from_command
 test_backup_creates_snapshot_and_pings
 test_backup_fails_loudly_when_db_unreachable
+test_snapshots_share_a_fixed_host
 echo "ALL BACKUP E2E TESTS PASSED"
