@@ -114,14 +114,18 @@ browser --https--> tailscale serve (VM, :443) --http--> 127.0.0.1:8080 nginx -->
    ```
    printf '\nALLOW_REGISTRATION=true\n' >> .env && docker compose up -d
    ```
-   Register in the app, then close it again and confirm a sign-up attempt is refused (`403`):
+   Register in the app, then close it again and confirm sign-ups are refused. The probe sends an empty body, so it cannot create an account
+   either way: `403` means registration is closed; `422` means it is still open (go back and
+   remove the `ALLOW_REGISTRATION` line):
    ```
    sed -i '/^ALLOW_REGISTRATION=/d' .env && docker compose up -d
    curl -s -o /dev/null -w '%{http_code}\n' -X POST -H 'Content-Type: application/json' \
-     -d '{"email":"probe@example.com","password":"longenough"}' http://127.0.0.1:8080/api/auth/register
+     -d '{}' http://127.0.0.1:8080/api/auth/register
    ```
 
-   If the probe prints `502`, the app is still restarting; wait a few seconds and run it again. If Tailscale asks you to enable Serve in the admin console, do so. Do **not** use
+   If the probe prints `502`, the app is still restarting; wait a few seconds and run it again.
+
+   If Tailscale asks you to enable Serve in the admin console, do so. Do **not** use
    `tailscale funnel` for this app: Funnel publishes it to the whole internet, where anyone
    could register. `tailscale serve status` should say `(tailnet only)`.
 
@@ -179,6 +183,8 @@ then `docker compose up -d`. `IMAGE_TAG` rolls back the app (api, web, migrate);
 service follows `BACKUP_IMAGE_TAG` instead, so an app rollback doesn't change the backup scripts.
 Caveat: this rolls back code, not the database. If the newer version ran a migration, the older
 code may not match the schema. Restore from a backup in that case (see below).
+Rolling `IMAGE_TAG` back to a commit from before registration was closed reopens sign-ups,
+because older images ignore `ALLOW_REGISTRATION`; re-run the step 9 probe after any rollback.
 
 ## Backups
 

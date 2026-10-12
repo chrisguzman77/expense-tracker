@@ -1,6 +1,6 @@
 from sqlalchemy import func, select
 
-from app.config import settings
+from app.config import Settings, settings
 from app.models.user import User
 
 
@@ -48,3 +48,8 @@ def test_existing_user_can_log_in_when_registration_closed(client, monkeypatch):
     monkeypatch.setattr(settings, "allow_registration", False)
     assert client.post("/api/auth/login", json=body).status_code == 200
     assert client.get("/api/auth/me").json()["email"] == "a@b.com"
+
+
+def test_registration_is_closed_by_default():
+    # Every other test forces it open via the autouse fixture; this pins the shipped default.
+    assert Settings.model_fields["allow_registration"].default is False
