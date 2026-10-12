@@ -10,7 +10,25 @@ browser --https--> tailscale serve (VM, :443) --http--> 127.0.0.1:8080 nginx -->
 
 ## One-time setup
 
-1. **Create the VM.** Ubuntu Server LTS, 2 vCPU, 2 GB RAM and 20 GB disk is plenty. Enable SSH during install.
+1. **Create the VM.** Ubuntu Server 24.04, 2 vCPU, 1.5–2 GB RAM and a 20 GB disk is plenty.
+   Put it on your home network bridge, never on an isolated lab network. From an Ubuntu
+   cloud-init template on Proxmox (here template `9000`, new VM ID `500`; pick a free
+   address on your network), in the Proxmox host shell:
+   ```
+   qm clone 9000 500 --name expense-tracker --full 1
+   qm set 500 --memory 1536 --balloon 1024 --cores 2 --onboot 1
+   qm resize 500 scsi0 20G
+   qm set 500 --ciuser <you> --sshkeys <file with your laptop's public key>
+   qm set 500 --ipconfig0 ip=<address>/24,gw=<router> --nameserver 1.1.1.1
+   qm start 500
+   ```
+   To log in from the Proxmox shell before Tailscale is set up, also add the host's own key
+   (`/root/.ssh/id_rsa.pub`) to the key file, then `qm stop 500 && qm start 500` so cloud-init
+   applies it. Once logged in, install the guest agent so `qm reboot` and `qm shutdown` work:
+   ```
+   sudo apt-get update && sudo apt-get upgrade -y
+   sudo apt-get install -y qemu-guest-agent && sudo systemctl start qemu-guest-agent
+   ```
 
 2. **Install Docker Engine and the compose plugin** using Docker's apt repository
    (https://docs.docker.com/engine/install/ubuntu/), then let your user run it:
@@ -48,7 +66,10 @@ browser --https--> tailscale serve (VM, :443) --http--> 127.0.0.1:8080 nginx -->
    - **R2:** in the Cloudflare dashboard, create an R2 bucket (for example
      `expense-tracker-backups`), then an R2 API token with **Object Read & Write** limited to
      that bucket. Put the S3 endpoint and bucket into `RESTIC_REPOSITORY` and the token's key
-     pair into `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY`.
+     pair into `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY`. The repository must start with
+     `s3:` (`s3:https://<account-id>.r2.cloudflarestorage.com/<bucket>`); without it restic
+     fails with "invalid backend". The `AWS_*` names are just what S3-compatible tools call
+     their credentials; nothing here uses Amazon.
    - **Encryption key:** `openssl rand -hex 32` into `RESTIC_PASSWORD`, and save the same value
      in your password manager now. Without it, no backup can ever be restored.
    - **Monitoring:** at healthchecks.io create two checks. "expense-tracker backup": period
@@ -87,6 +108,9 @@ browser --https--> tailscale serve (VM, :443) --http--> 127.0.0.1:8080 nginx -->
    tailscale serve status
    ```
    Open `https://<vm-name>.<tailnet>.ts.net` from any device on your tailnet and register.
+   If Tailscale asks you to enable Serve in the admin console, do so. Do **not** use
+   `tailscale funnel` for this app: Funnel publishes it to the whole internet, where anyone
+   could register. `tailscale serve status` should say `(tailnet only)`.
 
 ## Upgrading a VM set up before backups existed
 
