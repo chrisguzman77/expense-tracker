@@ -40,6 +40,7 @@ run_backup() {
 }
 
 # snapshot_count [VOLUME]: number of pgdump snapshots in a repository volume.
+# shellcheck disable=SC2120  # optional VOLUME argument; current callers use the default
 snapshot_count() {
   REPO_OVERRIDE="${1:-$REPO}" run_backup restic snapshots --tag pgdump --json \
     | grep -o '"short_id"' | wc -l | tr -d ' '
