@@ -110,6 +110,10 @@ Then deployment:
 - Snags along the way are in [lessons learned](lessons-learned.md#going-live): a reboot that
   needed the guest agent, a missing `s3:` prefix, and making sure Tailscale Funnel stayed off.
 
-**Next:** confirm the first scheduled 3 a.m. backup; close registration now that the one
-account exists; phone polish (icons, full-screen, layout); then piece 2, accounts and
-transactions with CSV import.
+Closing registration: the app had one account but still accepted sign-ups from any device on
+the tailnet. Registration is now off unless `ALLOW_REGISTRATION` is set, returning 403
+otherwise; the setup guide opens it only for the first sign-up
+([decision 17](decisions/0017-registration-closed-by-default.md)).
+
+**Next:** confirm the first scheduled 3 a.m. backup; phone polish (icons, full-screen,
+layout); then piece 2, accounts and transactions with CSV import.

@@ -61,6 +61,19 @@ describe("RegisterPage", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("Email already registered");
   });
 
+  it("shows that registration is closed on 403", async () => {
+    server.use(
+      http.post("/api/auth/register", () =>
+        HttpResponse.json({ detail: "Registration is closed" }, { status: 403 }),
+      ),
+    );
+    renderRegister();
+
+    await fillAndSubmit("chris@example.com", "longenough");
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Registration is closed");
+  });
+
   it("posts the new account and navigates home on success", async () => {
     let body: unknown;
     server.use(

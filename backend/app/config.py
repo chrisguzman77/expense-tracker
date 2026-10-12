@@ -6,6 +6,7 @@ class Settings(BaseSettings):
     jwt_secret: str
     jwt_expire_minutes: int = 60
     environment: str = "development"
+    allow_registration: bool = False
 
     model_config = SettingsConfigDict(env_file=".env")
 

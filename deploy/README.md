@@ -107,7 +107,25 @@ browser --https--> tailscale serve (VM, :443) --http--> 127.0.0.1:8080 nginx -->
    sudo tailscale serve --bg http://127.0.0.1:8080
    tailscale serve status
    ```
-   Open `https://<vm-name>.<tailnet>.ts.net` from any device on your tailnet and register.
+   Open `https://<vm-name>.<tailnet>.ts.net` from any device on your tailnet.
+
+   **Create your account.** Registration is closed by default. Open it just long enough to
+   sign up:
+   ```
+   printf '\nALLOW_REGISTRATION=true\n' >> .env && docker compose up -d
+   ```
+   Register in the app, then close it again and confirm sign-ups are refused. The probe sends
+   an empty body, so it cannot create an account either way: `403` means registration is
+   closed; `422` means it is still open (check that the `ALLOW_REGISTRATION` line is gone and
+   that `IMAGE_TAG` in `.env` isn't pinned to an image from before registration was closed):
+   ```
+   sed -i '/^ALLOW_REGISTRATION=/d' .env && docker compose up -d
+   curl -s -o /dev/null -w '%{http_code}\n' -X POST -H 'Content-Type: application/json' \
+     -d '{}' http://127.0.0.1:8080/api/auth/register
+   ```
+
+   If the probe prints `502`, the app is still restarting; wait a few seconds and run it again.
+
    If Tailscale asks you to enable Serve in the admin console, do so. Do **not** use
    `tailscale funnel` for this app: Funnel publishes it to the whole internet, where anyone
    could register. `tailscale serve status` should say `(tailnet only)`.
@@ -166,6 +184,8 @@ then `docker compose up -d`. `IMAGE_TAG` rolls back the app (api, web, migrate);
 service follows `BACKUP_IMAGE_TAG` instead, so an app rollback doesn't change the backup scripts.
 Caveat: this rolls back code, not the database. If the newer version ran a migration, the older
 code may not match the schema. Restore from a backup in that case (see below).
+Rolling `IMAGE_TAG` back to a commit from before registration was closed reopens sign-ups,
+because older images ignore `ALLOW_REGISTRATION`; re-run the step 9 probe after any rollback.
 
 ## Backups
 
@@ -241,7 +261,9 @@ On startup, `migrate` applies any migrations newer than the backup.
    docker compose run --rm backup bash -c 'set -o pipefail; restic dump --tag pgdump latest /expenses.dump | pg_restore --clean --if-exists --no-owner --single-transaction -d expenses'
    docker compose up -d
    ```
-4. Then do step 9 (`tailscale serve`). Optionally run `docker compose run --rm backup restore-drill`
+   No registration is needed; the restore brings your account back.
+4. Then do only the `tailscale serve` part of step 9, and skip "Create your account", because the
+   restored database already has it. Optionally run `docker compose run --rm backup restore-drill`
    once to confirm.
 
 ## Useful commands
