@@ -179,3 +179,20 @@ backend tests pass.
 **Next:** deploy (backup first, then pull and up), install on the iPhone, then longer sessions
 on trusted devices, the password-length fix, and piece 2, accounts and transactions with CSV
 import.
+
+## 2026-10-13 — Live on the phone; reordering the roadmap
+
+Deployed the redesign: took a backup first (the release added two columns), then pulled and
+restarted. The migration ran cleanly. Added the app to my iPhone home screen; it launches full
+screen with the donut icon.
+
+Then revisited the Rocket Money goal: connect my bank and cards once and see forgotten
+subscriptions straight away. Learned how that works: an aggregator such as Plaid handles the
+bank login and returns the past transaction history on the first connect, and the app looks for
+charges from the same merchant at a steady rhythm. Researched aggregators for my own banks.
+Plaid's free Trial plan (10 connections, no time limit in its docs) looks like the fit, with CSV
+import as the fallback. Moved subscription detection ahead of budgets
+([decision 19](decisions/0019-subscriptions-before-budgets-plaid-trial.md)).
+
+**Next:** longer sessions on trusted devices, the password-length fix, then accounts and
+transactions.

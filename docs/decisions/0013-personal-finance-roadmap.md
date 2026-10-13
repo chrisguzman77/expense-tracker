@@ -1,7 +1,7 @@
 # 13. Grow into a personal finance app, data safety first
 
 - **Date:** 2026-10-11
-- **Status:** Accepted
+- **Status:** Accepted; order of pieces 4 and 5 amended by [record 19](0019-subscriptions-before-budgets-plaid-trial.md)
 
 ## Context
 
