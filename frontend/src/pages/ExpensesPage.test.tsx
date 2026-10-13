@@ -2,121 +2,141 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
-import { createMemoryRouter, RouterProvider } from "react-router-dom";
+import { createMemoryRouter, RouterProvider, useParams } from "react-router-dom";
 import { describe, expect, it } from "vitest";
+import { localToday } from "../lib/dates";
 import { server } from "../test/server";
 import { ExpensesPage } from "./ExpensesPage";
 
-type Category = { id: number; name: string };
+type Category = { id: number; name: string; color: string; icon: string };
 type Expense = { id: number; amount: string; spent_on: string; note: string | null; category: Category };
+type SummaryRow = { category_id: number; name: string; color: string; icon: string; total: string };
 
-const food = { id: 1, name: "Food" };
-const rent = { id: 2, name: "Rent" };
+const food = { id: 1, name: "Food", color: "amber", icon: "🍔" };
+const rent = { id: 2, name: "Rent", color: "sky", icon: "🏠" };
 
-function localToday() {
-  const d = new Date();
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const row = (c: Category, total: string): SummaryRow => ({ category_id: c.id, name: c.name, color: c.color, icon: c.icon, total });
+
+function fakeApi(expenses: Expense[], summary: SummaryRow[]) {
+  server.use(
+    http.get("/api/expenses", () => HttpResponse.json(expenses)),
+    http.get("/api/summary", () => HttpResponse.json(summary)),
+  );
 }
 
-// In-memory fake so create/delete affect the list like the real API.
-function fakeApi(categories: Category[], initial: Expense[]) {
-  const rows = [...initial];
-  let nextId = Math.max(0, ...rows.map((r) => r.id)) + 1;
-  const posted: unknown[] = [];
-  server.use(
-    http.get("/api/categories", () => HttpResponse.json(categories)),
-    http.get("/api/expenses", () => HttpResponse.json(rows)),
-    http.post("/api/expenses", async ({ request }) => {
-      const body = (await request.json()) as { category_id: number; amount: string; spent_on: string; note: string | null };
-      posted.push(body);
-      const category = categories.find((c) => c.id === body.category_id)!;
-      const row = { id: nextId++, amount: body.amount, spent_on: body.spent_on, note: body.note, category };
-      rows.unshift(row);
-      return HttpResponse.json(row, { status: 201 });
-    }),
-    http.delete("/api/expenses/:id", ({ params }) => {
-      rows.splice(rows.findIndex((r) => r.id === Number(params.id)), 1);
-      return new HttpResponse(null, { status: 204 });
-    }),
-  );
-  return { posted };
+function Detail() {
+  return <p>detail of {useParams().id}</p>;
 }
 
 function renderPage() {
-  const router = createMemoryRouter([{ path: "/", element: <ExpensesPage /> }], { initialEntries: ["/"] });
+  const routes = [
+    { path: "/", element: <ExpensesPage /> },
+    { path: "/expenses/new", element: <p>new expense screen</p> },
+    { path: "/expenses/:id", element: <Detail /> },
+    { path: "/summary", element: <p>summary tab</p> },
+  ];
+  const router = createMemoryRouter(routes, { initialEntries: ["/"] });
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  render(
+  const ui = (
     <QueryClientProvider client={queryClient}>
       <RouterProvider router={router} />
-    </QueryClientProvider>,
+    </QueryClientProvider>
   );
+  return render(ui);
 }
 
 describe("ExpensesPage", () => {
-  it("lists expenses with category, amount, date and note", async () => {
-    fakeApi([food, rent], [{ id: 10, amount: "12.50", spent_on: "2026-10-05", note: "Lunch", category: food }]);
+  it("shows this month's total in the header", async () => {
+    fakeApi([], [row(rent, "900.00"), row(food, "12.50")]);
     renderPage();
 
-    const row = (await screen.findByText("Lunch")).closest("li")!;
-    expect(row).toHaveTextContent("Food");
-    expect(row).toHaveTextContent("12.50");
-    expect(row).toHaveTextContent("2026-10-05");
+    expect(await screen.findByText("$912.50")).toBeInTheDocument();
   });
 
-  it("creates an expense with today's date by default and shows it", async () => {
-    const { posted } = fakeApi([food, rent], []);
-    renderPage();
-    const user = userEvent.setup();
-    await screen.findByRole("option", { name: "Food" });
-
-    await user.selectOptions(screen.getByLabelText(/category/i), "1");
-    await user.type(screen.getByLabelText(/amount/i), "12.50");
-    await user.type(screen.getByLabelText(/note/i), "Lunch");
-    await user.click(screen.getByRole("button", { name: /add expense/i }));
-
-    expect(await screen.findByText("Lunch")).toBeInTheDocument();
-    expect(posted).toEqual([{ category_id: 1, amount: "12.50", spent_on: localToday(), note: "Lunch" }]);
-    expect(screen.getByLabelText(/amount/i)).toHaveValue("");
-  });
-
-  it("rejects a non-positive amount without calling the API", async () => {
-    const { posted } = fakeApi([food], []);
-    renderPage();
-    const user = userEvent.setup();
-    await screen.findByRole("option", { name: "Food" });
-
-    await user.selectOptions(screen.getByLabelText(/category/i), "1");
-    await user.type(screen.getByLabelText(/amount/i), "0");
-    await user.click(screen.getByRole("button", { name: /add expense/i }));
-
-    expect(await screen.findByText(/greater than 0/i)).toBeInTheDocument();
-    expect(posted).toEqual([]);
-  });
-
-  it("deletes an expense", async () => {
+  it("groups expenses under date headings, newest first", async () => {
     fakeApi(
-      [food, rent],
       [
-        { id: 10, amount: "12.50", spent_on: "2026-10-05", note: "Lunch", category: food },
-        { id: 11, amount: "900.00", spent_on: "2026-10-01", note: null, category: rent },
+        { id: 11, amount: "12.50", spent_on: localToday(), note: "Lunch", category: food },
+        { id: 10, amount: "900.00", spent_on: "2025-03-05", note: null, category: rent },
       ],
+      [],
     );
     renderPage();
-    const user = userEvent.setup();
-    const lunch = (await screen.findByText("Lunch")).closest("li")!;
 
-    await user.click(within(lunch).getByRole("button", { name: /delete/i }));
-
-    await screen.findByText("900.00");
-    expect(screen.queryByText("Lunch")).not.toBeInTheDocument();
+    const today = await screen.findByRole("region", { name: "Today" });
+    expect(within(today).getByRole("link", { name: /lunch/i })).toHaveTextContent(/Food.*Lunch.*\$12\.50/);
+    const older = screen.getByRole("region", { name: "Mar 5, 2025" });
+    expect(within(older).getByRole("link", { name: /rent/i })).toHaveTextContent("$900.00");
   });
 
-  it("tells the user to create a category first when there are none", async () => {
+  it("opens an expense's detail screen when its row is tapped", async () => {
+    fakeApi([{ id: 11, amount: "12.50", spent_on: localToday(), note: "Lunch", category: food }], []);
+    renderPage();
+
+    await userEvent.setup().click(await screen.findByRole("link", { name: /lunch/i }));
+
+    expect(await screen.findByText("detail of 11")).toBeInTheDocument();
+  });
+
+  it("opens the new expense screen from the + button", async () => {
     fakeApi([], []);
     renderPage();
 
-    expect(await screen.findByText(/create a category first/i)).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /add expense/i })).not.toBeInTheDocument();
+    await userEvent.setup().click(await screen.findByRole("link", { name: "Add expense" }));
+
+    expect(await screen.findByText("new expense screen")).toBeInTheDocument();
+  });
+
+  it("says when there are no expenses", async () => {
+    fakeApi([], []);
+    renderPage();
+
+    expect(await screen.findByText(/no expenses yet/i)).toBeInTheDocument();
+  });
+
+  describe("breakdown card", () => {
+    it("lists the top categories with amounts, largest first", async () => {
+      fakeApi([], [row(rent, "900.00"), row(food, "12.50"), row({ id: 3, name: "Travel", color: "teal", icon: "✈️" }, "0")]);
+      renderPage();
+
+      const legend = await screen.findByRole("list", { name: "Top categories" });
+      expect(within(legend).getAllByRole("listitem").map((li) => li.textContent)).toEqual(["Rent$900.00", "Food$12.50"]);
+    });
+
+    it("links to Summary when there are more than four categories", async () => {
+      const cats = [1, 2, 3, 4, 5, 6].map((id) => ({ id, name: `Cat${id}`, color: "slate", icon: "🏷️" }));
+      fakeApi([], cats.map((c, i) => row(c, `${60 - i * 10}.00`)));
+      renderPage();
+
+      const more = await screen.findByRole("link", { name: "+ 2 more" });
+      await userEvent.setup().click(more);
+      expect(await screen.findByText("summary tab")).toBeInTheDocument();
+    });
+
+    it("collapses to one line and remembers that across visits", async () => {
+      fakeApi([], [row(rent, "900.00"), row(food, "12.50")]);
+      const { unmount } = renderPage();
+      const user = userEvent.setup();
+
+      await user.click(await screen.findByRole("button", { name: "Hide breakdown" }));
+
+      expect(screen.queryByRole("list", { name: "Top categories" })).not.toBeInTheDocument();
+      expect(screen.getByText(/Top: Rent/)).toHaveTextContent("Top: Rent $900.00");
+      expect(localStorage.getItem("breakdown-collapsed")).toBe("true");
+
+      unmount();
+      renderPage();
+      expect(await screen.findByRole("button", { name: "Show breakdown" })).toHaveAttribute("aria-expanded", "false");
+
+      await user.click(screen.getByRole("button", { name: "Show breakdown" }));
+      expect(await screen.findByRole("list", { name: "Top categories" })).toBeInTheDocument();
+    });
+
+    it("says when nothing has been spent this month", async () => {
+      fakeApi([], [row(food, "0")]);
+      renderPage();
+
+      expect(await screen.findByText("No spending yet this month")).toBeInTheDocument();
+    });
   });
 });
