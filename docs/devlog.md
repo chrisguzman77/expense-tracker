@@ -233,3 +233,20 @@ sessions ended.
 
 **Next:** deploy (backup first, since this adds a column), log in again on each device and tick
 the box on the phone; then the password-length fix and accounts and transactions.
+
+## 2026-10-13 — Rolling out longer sessions; the password-length fix
+
+Landed both pull requests in `main` (#33) and deployed: took a backup first because the release
+adds a column, then pulled and restarted. Every device was logged out once, as expected, since
+older tokens carry no version. Logged in again, ticking "Keep me logged in" inside the phone's
+home-screen app.
+
+Then closed an issue open since the first week. bcrypt only reads 72 bytes of a password and
+the current version raises an error on anything longer. Checking the code turned up more than
+the notes said: registration allowed 120 characters, and login passed any length straight to
+bcrypt, so typing a very long password on the login page caused a server error. Registration
+now rejects more than 72 bytes (counted in bytes, since an emoji is four), the form says so
+before sending, and login treats a longer password as simply wrong. Tests first, including one
+with 19 emoji: 19 characters, 76 bytes.
+
+**Next:** accounts and transactions with CSV import.

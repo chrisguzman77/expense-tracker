@@ -10,6 +10,8 @@ from .database import get_db
 from .models.user import User
 
 COOKIE_NAME = "access_token"
+# bcrypt uses at most 72 bytes of a password and raises on longer input.
+BCRYPT_MAX_BYTES = 72
 
 
 def hash_password(raw: str) -> str:
@@ -17,6 +19,9 @@ def hash_password(raw: str) -> str:
 
 
 def verify_password(raw: str, hashed: str) -> bool:
+    # No stored password can be longer, so this is simply a wrong password.
+    if len(raw.encode()) > BCRYPT_MAX_BYTES:
+        return False
     return bcrypt.checkpw(raw.encode(), hashed.encode())
 
 

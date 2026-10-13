@@ -17,8 +17,11 @@ and the takeaway. Newest last. Design decisions themselves are in [decisions/](d
 
 **passlib broke with bcrypt 4** (2026-09-03)
 - *Fix:* call `bcrypt` directly. See [decision 3](decisions/0003-bcrypt-without-passlib.md).
-- *Still open:* bcrypt rejects passwords over 72 bytes, but the registration schema allows 120
-  characters.
+- *Follow-up (fixed 2026-10-13):* bcrypt rejects passwords over 72 bytes, but registration
+  allowed 120 characters, and login passed any length to bcrypt, so a long password typed on
+  the login page caused a 500. The limit is now checked in bytes at registration, and login
+  treats a longer password as wrong. A 72-character cap wouldn't have been enough: an emoji is
+  4 bytes.
 
 **The monthly summary dropped categories** (found 2026-10-06, PR #11)
 - *What happened:* categories whose expenses were all in other months vanished from a month's

@@ -90,4 +90,21 @@ describe("RegisterPage", () => {
     expect(body).toEqual({ email: "chris@example.com", password: "longenough" });
     expect(queryClient.getQueryData(["me"])).toEqual({ id: 1, email: "chris@example.com" });
   });
+
+  it("rejects passwords over 72 bytes without calling the API", async () => {
+    let called = false;
+    server.use(
+      http.post("/api/auth/register", () => {
+        called = true;
+        return HttpResponse.json({ id: 1, email: "chris@example.com" }, { status: 201 });
+      }),
+    );
+    renderRegister();
+
+    // 40 characters, but 80 bytes: each "é" is two bytes in UTF-8.
+    await fillAndSubmit("chris@example.com", "é".repeat(40));
+
+    expect(await screen.findByText(/too long: 72 bytes max/i)).toBeInTheDocument();
+    expect(called).toBe(false);
+  });
 });
