@@ -1,7 +1,7 @@
 # 15. Mobile access through a home-screen web app
 
 - **Date:** 2026-10-12
-- **Status:** Proposed (polish work not yet scheduled)
+- **Status:** Accepted (implemented in the UI redesign, 2026-10)
 
 ## Context
 
@@ -28,3 +28,15 @@ app manifest, app icons, full-screen launch, and a check of every screen at phon
 - Tailscale has to be connected on the phone to open the app.
 - Deep phone integrations (widgets, reading other apps' data) aren't available; nothing on the
   roadmap needs them.
+
+## Implementation notes
+
+- A web app manifest (`short_name` "Expenses", `display: standalone`), a 180px Apple touch
+  icon, and Apple meta tags for full-screen launch with a translucent status bar.
+- **No service worker.** iOS launches a home-screen app full screen without one. Its main use
+  is offline caching, which this app can't use (it needs its server), and a cached app shell
+  can keep serving an old version after a deploy.
+- Instead, nginx sends `Cache-Control: no-cache` for `index.html` and the manifest, so the app
+  checks for a new version on every launch. Hashed files under `/assets/` stay cached for a
+  year; their names change with every build.
+- A home-screen app keeps its own cookies, separate from Safari, so it needs its own login once.

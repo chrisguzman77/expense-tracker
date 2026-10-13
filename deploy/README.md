@@ -169,10 +169,24 @@ cd ~/expense-tracker
 docker compose pull
 docker compose up -d
 ```
+If the release adds a database migration, take a backup first:
+`docker compose run --rm backup backup-now`.
+
+The home-screen app picks up the new version the next time it is opened (close it from the app
+switcher and reopen).
+
 `migrate` runs again on every `up` and applies only migrations that are new. If it exits non-zero,
 compose stops with an error instead of starting the new api. Check `docker compose logs migrate`.
 
 If `compose.yaml` itself changed on `main`, re-download it first (step 4, without overwriting `.env`).
+
+## Installing on iPhone
+
+1. Connect Tailscale on the phone.
+2. In Safari, open the app's Tailscale address (`https://<vm-name>.<tailnet>.ts.net`).
+3. Tap Share, then **Add to Home Screen**. The name defaults to "Expenses".
+4. Open it from the home screen and log in. Home-screen apps keep their own cookies, separate
+   from Safari, so this one login is needed even if Safari is already signed in.
 
 ## Rolling back
 

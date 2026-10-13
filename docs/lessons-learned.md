@@ -129,6 +129,14 @@ and the takeaway. Newest last. Design decisions themselves are in [decisions/](d
 **GitHub's API: required checks are updated with PATCH** (2026-10-11)
 - `PUT .../protection/required_status_checks` returns 404. The endpoint only accepts `PATCH`.
 
+**nginx didn't know what a `.webmanifest` was** (found while planning, 2026-10-12)
+- *Cause:* the `nginx:1.27-alpine` image's MIME table has no entry for `.webmanifest`, so the
+  manifest would have been served as `application/octet-stream`.
+- *Fix:* an exact-match location for `/manifest.webmanifest` that sets
+  `application/manifest+json`. Checked with `curl -I` against the built image.
+- *Takeaway:* when adding a new kind of static file, check the `Content-Type` the server
+  actually sends.
+
 ## Backups
 
 **A failed dump could have been saved as a successful backup** (design, 2026-10-11)
