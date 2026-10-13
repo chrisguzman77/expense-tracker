@@ -12,6 +12,7 @@ import { inputClass } from "../components/styles";
 const schema = z.object({
   email: z.email("Enter a valid email"),
   password: z.string().min(1, "Password is required"),
+  remember: z.boolean(),
 });
 type FormValues = z.infer<typeof schema>;
 
@@ -22,7 +23,7 @@ export function LoginPage() {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
-  } = useForm<FormValues>({ resolver: zodResolver(schema) });
+  } = useForm<FormValues>({ resolver: zodResolver(schema), defaultValues: { remember: false } });
 
   const onSubmit = handleSubmit(async (values) => {
     try {
@@ -42,6 +43,10 @@ export function LoginPage() {
         <Field label="Password" htmlFor="password" error={errors.password?.message}>
           <input id="password" type="password" autoComplete="current-password" className={inputClass} {...register("password")} />
         </Field>
+        <label className="flex min-h-11 items-center gap-3 text-sm">
+          <input type="checkbox" className="size-5 accent-accent" {...register("remember")} />
+          Keep me logged in
+        </label>
         {login.isError && (
           <p role="alert" className="text-sm text-danger">
             {login.error.message}

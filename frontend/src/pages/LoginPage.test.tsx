@@ -32,6 +32,25 @@ async function fillAndSubmit(email: string, password: string) {
 }
 
 describe("LoginPage", () => {
+  it("asks to keep the session when the box is ticked", async () => {
+    let body: unknown;
+    server.use(
+      http.post("/api/auth/login", async ({ request }) => {
+        body = await request.json();
+        return HttpResponse.json({ id: 1, email: "chris@example.com" });
+      }),
+    );
+    renderLogin();
+
+    const keep = screen.getByRole("checkbox", { name: "Keep me logged in" });
+    expect(keep).not.toBeChecked();
+    await userEvent.setup().click(keep);
+    await fillAndSubmit("chris@example.com", "hunter22");
+
+    expect(await screen.findByText("home")).toBeInTheDocument();
+    expect(body).toEqual({ email: "chris@example.com", password: "hunter22", remember: true });
+  });
+
   it("posts credentials and navigates home on success", async () => {
     let body: unknown;
     server.use(
@@ -45,7 +64,7 @@ describe("LoginPage", () => {
     await fillAndSubmit("chris@example.com", "hunter22");
 
     expect(await screen.findByText("home")).toBeInTheDocument();
-    expect(body).toEqual({ email: "chris@example.com", password: "hunter22" });
+    expect(body).toEqual({ email: "chris@example.com", password: "hunter22", remember: false });
     expect(queryClient.getQueryData(["me"])).toEqual({ id: 1, email: "chris@example.com" });
   });
 
