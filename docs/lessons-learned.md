@@ -66,6 +66,15 @@ and the takeaway. Newest last. Design decisions themselves are in [decisions/](d
 - *Takeaway:* per-page tests each start from a fresh fetch; flows that hand state between
   screens need a test that crosses them.
 
+**An optional API field came out required in the generated types** (2026-10-13, twice)
+- *Cause:* `openapi-typescript` marks any schema property that has a default as required in
+  the TypeScript types. `remember: bool = False` on the login body became `remember: boolean`,
+  so the type check failed until the login page sent it. Category `color` and `icon` did the
+  same during the redesign.
+- *Fix:* the frontend sends the value explicitly; the backend default stays for other clients.
+- *Takeaway:* "the existing frontend keeps working" holds at runtime but not at compile time
+  when a field with a default is added; plan for the frontend to send it.
+
 ## Local development
 
 **Ports already taken by other projects** (2026-10-02 and 2026-10-06)

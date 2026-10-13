@@ -55,6 +55,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/auth/logout-all": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Logout All */
+        post: operations["logout_all_api_auth_logout_all_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/auth/me": {
         parameters: {
             query?: never;
@@ -279,6 +296,11 @@ export interface components {
             email: string;
             /** Password */
             password: string;
+            /**
+             * Remember
+             * @default false
+             */
+            remember: boolean;
         };
         /** UserRead */
         UserRead: {
@@ -379,6 +401,24 @@ export interface operations {
         };
     };
     logout_api_auth_logout_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    logout_all_api_auth_logout_all_post: {
         parameters: {
             query?: never;
             header?: never;

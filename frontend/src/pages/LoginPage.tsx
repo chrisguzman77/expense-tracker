@@ -26,7 +26,7 @@ export function LoginPage() {
 
   const onSubmit = handleSubmit(async (values) => {
     try {
-      await login.mutateAsync(values);
+      await login.mutateAsync({ ...values, remember: false });
       navigate("/", { replace: true });
     } catch {
       // Shown below via login.error
