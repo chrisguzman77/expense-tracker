@@ -11,7 +11,9 @@ export const categoriesQueryKey = ["categories"] as const;
 // The summary lists every category (with a 0 total if unused), so it changes too.
 function invalidateCategoryData(queryClient: QueryClient) {
   return Promise.all([
-    queryClient.invalidateQueries({ queryKey: categoriesQueryKey }),
+    // "all": the new-category screen has no observer of the list, and the expense
+    // form mounts right after, so an inactive query must be refetched before navigating.
+    queryClient.invalidateQueries({ queryKey: categoriesQueryKey, refetchType: "all" }),
     queryClient.invalidateQueries({ queryKey: summaryQueryKey }),
   ]);
 }
