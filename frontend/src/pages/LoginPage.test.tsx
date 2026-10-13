@@ -45,7 +45,7 @@ describe("LoginPage", () => {
     await fillAndSubmit("chris@example.com", "hunter22");
 
     expect(await screen.findByText("home")).toBeInTheDocument();
-    expect(body).toEqual({ email: "chris@example.com", password: "hunter22" });
+    expect(body).toEqual({ email: "chris@example.com", password: "hunter22", remember: false });
     expect(queryClient.getQueryData(["me"])).toEqual({ id: 1, email: "chris@example.com" });
   });
 

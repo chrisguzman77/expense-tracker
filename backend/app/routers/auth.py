@@ -46,6 +46,18 @@ def logout(response: Response):
     response.delete_cookie(COOKIE_NAME, path="/")
 
 
+@router.post("/logout-all", status_code=204)
+def logout_all(
+    response: Response,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    user_service.log_out_everywhere(db, user)
+    # get_current_user already set a refreshed cookie on this response; deleting
+    # it afterward wins, and that token carries the old version anyway.
+    response.delete_cookie(COOKIE_NAME, path="/")
+
+
 @router.get("/me", response_model=UserRead)
 def me(user: User = Depends(get_current_user)):
     return user

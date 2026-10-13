@@ -1,7 +1,7 @@
 # 2. Authentication: JWT in an httpOnly cookie, same origin
 
 - **Date:** 2026-09-03 (PR #2)
-- **Status:** Accepted
+- **Status:** Accepted; session lifetime amended by [record 20](0020-sliding-sessions-and-log-out-everywhere.md)
 
 ## Context
 

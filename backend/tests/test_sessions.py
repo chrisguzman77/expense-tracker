@@ -112,3 +112,26 @@ def test_token_without_a_version_is_401(client):
     user_id = register(client)
     r = me_with(client, sign(sub=str(user_id), exp=soon()))
     assert r.status_code == 401
+
+
+def test_log_out_everywhere_ends_every_session(client):
+    register(client)
+    first = client.post("/api/auth/login", json=CREDS).cookies[COOKIE_NAME]
+    second = client.post("/api/auth/login", json=CREDS).cookies[COOKIE_NAME]
+    client.cookies.clear()
+
+    r = client.post(
+        "/api/auth/logout-all", headers={"Cookie": f"{COOKIE_NAME}={second}"}
+    )
+
+    assert r.status_code == 204
+    assert me_with(client, first).status_code == 401
+    assert me_with(client, second).status_code == 401
+    fresh = client.post("/api/auth/login", json=CREDS).cookies[COOKIE_NAME]
+    assert decode(fresh)["ver"] == 1
+    assert me_with(client, fresh).status_code == 200
+
+
+def test_log_out_everywhere_requires_login(client):
+    client.cookies.clear()
+    assert client.post("/api/auth/logout-all").status_code == 401
