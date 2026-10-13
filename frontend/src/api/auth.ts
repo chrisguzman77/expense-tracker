@@ -48,3 +48,11 @@ export function useLogout() {
     onSuccess: () => queryClient.clear(),
   });
 }
+
+export function useLogoutEverywhere() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => unwrapVoid(api.POST("/api/auth/logout-all")),
+    onSuccess: () => queryClient.clear(),
+  });
+}
