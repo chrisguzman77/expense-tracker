@@ -53,3 +53,36 @@ def test_existing_user_can_log_in_when_registration_closed(client, monkeypatch):
 def test_registration_is_closed_by_default():
     # Every other test forces it open via the autouse fixture; this pins the shipped default.
     assert Settings.model_fields["allow_registration"].default is False
+
+
+def test_register_accepts_a_72_byte_password(client):
+    r = client.post(
+        "/api/auth/register", json={"email": "a@b.com", "password": "a" * 72}
+    )
+    assert r.status_code == 201
+
+
+def test_register_rejects_a_73_byte_password(client):
+    r = client.post(
+        "/api/auth/register", json={"email": "a@b.com", "password": "a" * 73}
+    )
+    assert r.status_code == 422
+    assert "72 bytes max" in r.text
+
+
+def test_register_counts_bytes_not_characters(client):
+    password = "😀" * 19
+    assert len(password) == 19
+    assert len(password.encode()) == 76
+    r = client.post(
+        "/api/auth/register", json={"email": "a@b.com", "password": password}
+    )
+    assert r.status_code == 422
+
+
+def test_login_with_an_over_long_password_is_401(client):
+    client.post(
+        "/api/auth/register", json={"email": "a@b.com", "password": "hunter22!"}
+    )
+    r = client.post("/api/auth/login", json={"email": "a@b.com", "password": "a" * 100})
+    assert r.status_code == 401
