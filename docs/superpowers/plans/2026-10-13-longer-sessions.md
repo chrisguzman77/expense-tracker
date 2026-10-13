@@ -798,13 +798,9 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 
 In `frontend/src/pages/LoginPage.test.tsx`:
 
-1. In the existing test "posts credentials and navigates home on success", change the body assertion to:
-
-```tsx
-    expect(body).toEqual({ email: "chris@example.com", password: "hunter22", remember: false });
-```
-
-2. Add inside the `describe` block:
+The existing test "posts credentials and navigates home on success" already expects
+`remember: false` in the body (Task 2 added it when the regenerated type made `remember`
+required). Leave it as is. Add inside the `describe` block:
 
 ```tsx
   it("asks to keep the session when the box is ticked", async () => {
@@ -879,7 +875,7 @@ Add inside the `describe` block of `frontend/src/pages/SettingsPage.test.tsx`:
 - [ ] **Step 3: Run them to confirm they fail**
 
 From `frontend/`: `npx vitest run src/pages/LoginPage.test.tsx src/pages/SettingsPage.test.tsx`
-Expected: 4 failures: the body assertion (no `remember`), no checkbox, and no "Log out everywhere" button (both Settings tests).
+Expected: 3 failures: no checkbox, and no "Log out everywhere" button (both Settings tests).
 
 - [ ] **Step 4: Add the hook**
 
@@ -915,7 +911,10 @@ const schema = z.object({
   } = useForm<FormValues>({ resolver: zodResolver(schema), defaultValues: { remember: false } });
 ```
 
-3. Directly after the Password `</Field>`, add:
+3. In `onSubmit`, Task 2 left a placeholder `await login.mutateAsync({ ...values, remember: false });`.
+   Change it back to `await login.mutateAsync(values);` so the checkbox value is sent.
+
+4. Directly after the Password `</Field>`, add:
 
 ```tsx
         <label className="flex min-h-11 items-center gap-3 text-sm">
