@@ -41,6 +41,14 @@ and the takeaway. Newest last. Design decisions themselves are in [decisions/](d
   enabled; this project doesn't enable them.
 - *Fix:* call `cleanup()` in `afterEach` in the shared test setup.
 
+**Negative amounts would have been off by a dollar** (found while planning the redesign, 2026-10-12)
+- *Cause:* `toCents("-12.5")` split on the dot and computed `-12 * 100 + 50 = -1150`, adding
+  the cents to a negative whole part. Formatting `-50` cents also lost the sign (`-0` prints as
+  `0`).
+- *Impact:* none yet; amounts are always positive today. Refunds and imported bank
+  transactions will be negative.
+- *Fix:* handle the sign separately from the digits, with tests for negative values.
+
 ## Local development
 
 **Ports already taken by other projects** (2026-10-02 and 2026-10-06)

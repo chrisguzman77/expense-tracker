@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { z } from "zod";
 import { useCategories } from "../api/categories";
 import { useCreateExpense, useDeleteExpense, useExpenses } from "../api/expenses";
+import { addDays, localToday } from "../lib/dates";
 
 // Amounts stay strings end to end (NUMERIC(12,2) on the backend); we only
 // validate the shape here and never do float math on them.
@@ -146,18 +147,4 @@ export function ExpensesPage() {
       )}
     </section>
   );
-}
-
-function localToday(): string {
-  return formatLocal(new Date());
-}
-
-function addDays(iso: string, days: number): string {
-  const [y, m, d] = iso.split("-").map(Number);
-  return formatLocal(new Date(y, m - 1, d + days));
-}
-
-function formatLocal(d: Date): string {
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
