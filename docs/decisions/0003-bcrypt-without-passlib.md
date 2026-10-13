@@ -21,5 +21,7 @@ Call `bcrypt.hashpw` and `bcrypt.checkpw` directly in `backend/app/auth.py`, and
 ## Consequences
 
 - bcrypt only uses the first 72 bytes of a password and newer versions reject longer input.
-  The password schema should cap length at 72. **Open issue:** `UserCreate` currently allows
-  120 characters, so a very long password would cause a server error at registration.
+  The password schema should cap length at 72. **Resolved 2026-10-13:** registration now
+  rejects passwords over 72 UTF-8 bytes (not characters; emoji and accented letters take
+  several) with a 422, and login treats a longer password as wrong (401) instead of passing it
+  to bcrypt, which raised a server error on both paths.
