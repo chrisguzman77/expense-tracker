@@ -68,4 +68,66 @@ describe("SettingsPage", () => {
     expect(loggedOut).toBe(true);
     expect(queryClient.getQueryData(["me"])).toBeUndefined();
   });
+
+  it("logs out everywhere after confirming", async () => {
+    let calls = 0;
+    server.use(
+      me(),
+      http.post("/api/auth/logout-all", () => {
+        calls += 1;
+        return new HttpResponse(null, { status: 204 });
+      }),
+    );
+    const { queryClient } = renderSettings();
+    await screen.findByText("chris@example.com");
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole("button", { name: "Log out everywhere" }));
+    expect(screen.getByText("This logs out every device, including this one.")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Confirm" }));
+
+    expect(await screen.findByText("login page")).toBeInTheDocument();
+    expect(calls).toBe(1);
+    expect(queryClient.getQueryData(["me"])).toBeUndefined();
+  });
+
+  it("cancelling log out everywhere sends nothing", async () => {
+    let calls = 0;
+    server.use(
+      me(),
+      http.post("/api/auth/logout-all", () => {
+        calls += 1;
+        return new HttpResponse(null, { status: 204 });
+      }),
+    );
+    renderSettings();
+    await screen.findByText("chris@example.com");
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole("button", { name: "Log out everywhere" }));
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+
+    expect(screen.getByRole("button", { name: "Log out everywhere" })).toBeInTheDocument();
+    expect(screen.queryByText("This logs out every device, including this one.")).not.toBeInTheDocument();
+    expect(calls).toBe(0);
+  });
+
+  it("shows an error if log out everywhere fails, and Cancel clears it", async () => {
+    server.use(
+      me(),
+      http.post("/api/auth/logout-all", () => HttpResponse.json({ detail: "Server error" }, { status: 500 })),
+    );
+    renderSettings();
+    await screen.findByText("chris@example.com");
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole("button", { name: "Log out everywhere" }));
+    await user.click(screen.getByRole("button", { name: "Confirm" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Server error");
+    expect(screen.queryByText("login page")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
 });

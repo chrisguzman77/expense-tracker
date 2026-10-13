@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useLogout, useMe } from "../api/auth";
+import { useLogout, useLogoutEverywhere, useMe } from "../api/auth";
 import { Button } from "../components/Button";
 import { Card } from "../components/Card";
 import { Screen } from "../components/Screen";
@@ -15,6 +15,8 @@ const THEME_OPTIONS: { value: ThemePref; label: string }[] = [
 export function SettingsPage() {
   const me = useMe();
   const logout = useLogout();
+  const logoutEverywhere = useLogoutEverywhere();
+  const [confirmingEverywhere, setConfirmingEverywhere] = useState(false);
   const navigate = useNavigate();
   const [theme, setTheme] = useState<ThemePref>(getThemePref);
 
@@ -26,6 +28,15 @@ export function SettingsPage() {
   async function onLogout() {
     await logout.mutateAsync();
     navigate("/login", { replace: true });
+  }
+
+  async function onLogoutEverywhere() {
+    try {
+      await logoutEverywhere.mutateAsync();
+      navigate("/login", { replace: true });
+    } catch {
+      // Shown below via logoutEverywhere.error
+    }
   }
 
   return (
@@ -65,6 +76,34 @@ export function SettingsPage() {
         <Button variant="secondary" onClick={onLogout} disabled={logout.isPending} className="w-full">
           Log out
         </Button>
+        {logoutEverywhere.isError && (
+          <p role="alert" className="text-sm text-danger">
+            {logoutEverywhere.error.message}
+          </p>
+        )}
+        {confirmingEverywhere ? (
+          <Card className="flex flex-col gap-3 p-4">
+            <p className="font-medium">This logs out every device, including this one.</p>
+            <div className="grid grid-cols-2 gap-3">
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setConfirmingEverywhere(false);
+                  logoutEverywhere.reset();
+                }}
+              >
+                Cancel
+              </Button>
+              <Button variant="danger" onClick={onLogoutEverywhere} disabled={logoutEverywhere.isPending}>
+                Confirm
+              </Button>
+            </div>
+          </Card>
+        ) : (
+          <Button variant="secondary" onClick={() => setConfirmingEverywhere(true)} className="w-full">
+            Log out everywhere
+          </Button>
+        )}
       </div>
     </Screen>
   );

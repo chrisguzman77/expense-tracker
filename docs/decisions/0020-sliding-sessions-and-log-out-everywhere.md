@@ -22,7 +22,8 @@ one of them. That makes long sessions cheaper here than on a public site, not fr
   was issued with; "log out everywhere" increments it, so every outstanding token is rejected.
   The check is free because the user row is already loaded on every request.
 - **No absolute cap** on session age; log out everywhere covers a lost device.
-- The frontend sends the user to the login screen on any 401, instead of showing the raw error.
+- The frontend sends the user to the login screen on any 401 (except a wrong password on the
+  login form), instead of showing the raw error.
 
 ## Alternatives considered
 
@@ -37,8 +38,13 @@ one of them. That makes long sessions cheaper here than on a public site, not fr
 
 ## Consequences
 
-- Logout still only deletes the cookie on that device; a copied token stays valid for up to 30
-  days unless log out everywhere is used.
+- Logout still only deletes the cookie on that device. Because sessions slide and have no cap,
+  a copied token stays valid for as long as whoever holds it keeps using it within the idle
+  limit (30 days remembered, 60 minutes otherwise). Only log out everywhere ends it.
+- A request still in flight when Log out is pressed can set the cookie again if its response
+  arrives after the logout's. The window is milliseconds; log out everywhere is immune, since
+  the reissued token carries the old version.
 - There is no list of signed-in devices and no way to end just one.
 - Every device was logged out once at deploy, because older tokens have no version.
-- Every authenticated response sets a cookie.
+- Every successful authenticated response sets a cookie. Error responses (404, 409, 422) don't,
+  which only means those requests don't extend the session.

@@ -29,6 +29,21 @@ and the takeaway. Newest last. Design decisions themselves are in [decisions/](d
 - *Fix:* move the date range into the `JOIN ... ON` condition. Regression test added first.
 - *Takeaway:* with outer joins, conditions on the optional side belong in `ON`, not `WHERE`.
 
+**"Up to 30 days" was wrong: a sliding session never runs out while it's used** (final review, 2026-10-13)
+- *What happened:* the first draft of [decision 20](decisions/0020-sliding-sessions-and-log-out-everywhere.md)
+  said a copied token stays valid for up to 30 days. But every request reissues the token, and
+  there is no absolute cap, so a copy that keeps being used never expires.
+- *Fix:* the record now says so, and that only log out everywhere ends it.
+- *Takeaway:* "expires after N days" and "expires after N idle days" are different promises.
+  State which one a design makes, especially where security depends on it.
+
+**Reissuing cookies on every response undoes a logout in a narrow race** (final review, 2026-10-13)
+- *Cause:* a request already in flight when Log out is pressed can come back after the logout
+  response with a fresh `Set-Cookie`, re-creating the session. Before sliding sessions, nothing
+  reissued cookies, so deleting one was final.
+- *Impact:* a window of milliseconds; log out everywhere is immune because the reissued token
+  carries the old version. Accepted and recorded in decision 20.
+
 ## Frontend
 
 **Test request interceptors didn't see requests** (2026-10-02)

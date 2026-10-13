@@ -125,6 +125,9 @@ def test_log_out_everywhere_ends_every_session(client):
     )
 
     assert r.status_code == 204
+    cookies = r.headers.get_list("set-cookie")
+    assert cookies[-1].startswith(f'{COOKIE_NAME}=""')
+    assert "Max-Age=0" in cookies[-1]
     assert me_with(client, first).status_code == 401
     assert me_with(client, second).status_code == 401
     fresh = client.post("/api/auth/login", json=CREDS).cookies[COOKIE_NAME]

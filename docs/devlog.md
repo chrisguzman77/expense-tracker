@@ -196,3 +196,40 @@ import as the fallback. Moved subscription detection ahead of budgets
 
 **Next:** longer sessions on trusted devices, the password-length fix, then accounts and
 transactions.
+
+## 2026-10-13 — Staying logged in on the phone
+
+The home-screen app logged out every hour because the login token expired 60 minutes after
+login, whatever I was doing. Designed the fix through brainstorming:
+
+- Sessions slide: each request renews the token, so I'm only logged out after a stretch of not
+  using the app.
+- A "Keep me logged in" checkbox picks the stretch: 30 days, or 60 minutes with a cookie that
+  ends when the browser closes.
+- "Log out everywhere" in Settings, for a lost phone.
+- Any ended session now lands on the login screen instead of showing a raw error.
+
+The main choice was how to end a 30-day session early. A server-side sessions table would have
+allowed ending one device at a time; I kept the existing token and added a version number to
+each user, which "log out everywhere" bumps. Smaller, and enough for one person with two
+devices ([decision 20](decisions/0020-sliding-sessions-and-log-out-everywhere.md)).
+
+Built in two pull requests, each task implemented and reviewed by separate agents (#31 for the
+backend). Things found along the way:
+
+- The generated TypeScript types made the new optional `remember` field required, the second
+  time a field with a default has done that ([lessons](lessons-learned.md#frontend)).
+- Prototyping the logout redirect while planning showed React Query would retry a 401 three
+  times first, delaying the redirect by about seven seconds. 401s are no longer retried.
+- The final review caught that my decision record overstated the security: with sliding and no
+  cap, a copied token lasts as long as it keeps being used, not "up to 30 days". Corrected
+  ([lessons](lessons-learned.md#backend)).
+- A few unrelated frontend tests timed out when the laptop was overloaded (load average around
+  24 on 8 cores); they pass on their own and in CI.
+
+Checked the login checkbox and the Settings confirmation at phone width in both themes, and ran
+the whole flow against the local API with curl: two logins, one "log out everywhere", both
+sessions ended.
+
+**Next:** deploy (backup first, since this adds a column), log in again on each device and tick
+the box on the phone; then the password-length fix and accounts and transactions.
