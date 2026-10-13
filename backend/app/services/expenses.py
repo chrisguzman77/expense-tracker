@@ -25,8 +25,10 @@ def list_categories(db: Session, user_id: int) -> list[Category]:
     )
 
 
-def create_category(db: Session, user_id: int, name: str) -> Category:
-    cat = Category(user_id=user_id, name=name)
+def create_category(
+    db: Session, user_id: int, name: str, color: str, icon: str
+) -> Category:
+    cat = Category(user_id=user_id, name=name, color=color, icon=icon)
     db.add(cat)
     try:
         db.commit()
@@ -93,6 +95,8 @@ def summary_by_category(db: Session, user_id: int, year: int, month: int):
         select(
             Category.id,
             Category.name,
+            Category.color,
+            Category.icon,
             func.coalesce(func.sum(Expense.amount), 0).label("total"),
         )
         # Date range lives in the ON clause so categories with no expenses
@@ -108,4 +112,7 @@ def summary_by_category(db: Session, user_id: int, year: int, month: int):
         .group_by(Category.id)
         .order_by(func.sum(Expense.amount).desc().nulls_last())
     )
-    return [{"category_id": r[0], "name": r[1], "total": r[2]} for r in db.execute(q)]
+    return [
+        {"category_id": r[0], "name": r[1], "color": r[2], "icon": r[3], "total": r[4]}
+        for r in db.execute(q)
+    ]

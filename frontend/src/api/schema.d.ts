@@ -184,6 +184,17 @@ export interface components {
         CategoryCreate: {
             /** Name */
             name: string;
+            /**
+             * Color
+             * @default slate
+             * @enum {string}
+             */
+            color: "amber" | "emerald" | "sky" | "violet" | "rose" | "orange" | "teal" | "indigo" | "lime" | "slate";
+            /**
+             * Icon
+             * @default 🏷️
+             */
+            icon: string;
         };
         /** CategoryRead */
         CategoryRead: {
@@ -191,6 +202,13 @@ export interface components {
             id: number;
             /** Name */
             name: string;
+            /**
+             * Color
+             * @enum {string}
+             */
+            color: "amber" | "emerald" | "sky" | "violet" | "rose" | "orange" | "teal" | "indigo" | "lime" | "slate";
+            /** Icon */
+            icon: string;
         };
         /** CategorySummary */
         CategorySummary: {
@@ -198,6 +216,13 @@ export interface components {
             category_id: number;
             /** Name */
             name: string;
+            /**
+             * Color
+             * @enum {string}
+             */
+            color: "amber" | "emerald" | "sky" | "violet" | "rose" | "orange" | "teal" | "indigo" | "lime" | "slate";
+            /** Icon */
+            icon: string;
             /** Total */
             total: string;
         };

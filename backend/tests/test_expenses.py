@@ -1,3 +1,6 @@
+import pytest
+
+
 def signup(client, email):
     r = client.post(
         "/api/auth/register", json={"email": email, "password": "hunter22!"}
@@ -67,3 +70,65 @@ def test_summary_includes_categories_with_no_expenses_that_month(client):
         for row in client.get("/api/summary?year=2026&month=8").json()
     }
     assert totals == {"Food": "0", "Travel": "0"}
+
+
+def test_category_color_and_icon_round_trip(client):
+    signup(client, "a@b.com")
+    r = client.post(
+        "/api/categories", json={"name": "Food", "color": "amber", "icon": "🍔"}
+    )
+    assert r.status_code == 201, r.text
+    cat = r.json()
+    assert cat == {"id": cat["id"], "name": "Food", "color": "amber", "icon": "🍔"}
+    assert client.get("/api/categories").json() == [cat]
+
+    exp = client.post(
+        "/api/expenses",
+        json={"category_id": cat["id"], "amount": "3.00", "spent_on": "2026-08-30"},
+    ).json()
+    assert exp["category"] == cat
+
+
+def test_category_color_and_icon_default_when_omitted(client):
+    signup(client, "a@b.com")
+    cat = client.post("/api/categories", json={"name": "Food"}).json()
+    assert cat["color"] == "slate"
+    assert cat["icon"] == "🏷️"
+
+
+def test_category_accepts_multi_codepoint_emoji(client):
+    signup(client, "a@b.com")
+    r = client.post("/api/categories", json={"name": "Family", "icon": "👨‍👩‍👧"})
+    assert r.status_code == 201, r.text
+    assert r.json()["icon"] == "👨‍👩‍👧"
+
+
+@pytest.mark.parametrize(
+    "extra",
+    [{"color": "chartreuse"}, {"icon": ""}, {"icon": "x" * 17}],
+)
+def test_category_rejects_bad_color_or_icon(client, extra):
+    signup(client, "a@b.com")
+    r = client.post("/api/categories", json={"name": "Food", **extra})
+    assert r.status_code == 422
+    assert client.get("/api/categories").json() == []
+
+
+def test_summary_includes_color_and_icon(client):
+    signup(client, "a@b.com")
+    food = client.post(
+        "/api/categories", json={"name": "Food", "color": "amber", "icon": "🍔"}
+    ).json()["id"]
+    client.post(
+        "/api/expenses",
+        json={"category_id": food, "amount": "10.00", "spent_on": "2026-08-01"},
+    )
+    assert client.get("/api/summary?year=2026&month=8").json() == [
+        {
+            "category_id": food,
+            "name": "Food",
+            "color": "amber",
+            "icon": "🍔",
+            "total": "10.00",
+        }
+    ]

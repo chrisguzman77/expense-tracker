@@ -25,6 +25,9 @@ class Category(Base):
         ForeignKey("users.id", ondelete="CASCADE"), index=True
     )
     name: Mapped[str] = mapped_column(String(50))
+    # Server defaults fill existing rows when the migration adds the columns.
+    color: Mapped[str] = mapped_column(String(20), server_default="slate")
+    icon: Mapped[str] = mapped_column(String(16), server_default="🏷️")
 
 
 class Expense(Base):
