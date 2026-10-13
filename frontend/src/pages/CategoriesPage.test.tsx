@@ -97,6 +97,23 @@ describe("CategoriesPage", () => {
     expect(posted).toEqual([]);
   });
 
+  // Behavior guard: the limit counts code points like the backend, so 16 emoji
+  // (32 UTF-16 units) are accepted. Holds whichever way the schema implements it.
+  it("accepts 16 multi-unit emoji", async () => {
+    const { posted } = fakeCategories([food]);
+    renderPage();
+    const user = userEvent.setup();
+    await screen.findByText("Food");
+
+    await user.type(screen.getByLabelText("Name"), "Many");
+    await user.clear(screen.getByLabelText("Emoji"));
+    await user.type(screen.getByLabelText("Emoji"), "🍔".repeat(16));
+    await user.click(screen.getByRole("button", { name: "Add category" }));
+
+    await screen.findByText("Many");
+    expect(posted).toEqual([{ name: "Many", icon: "🍔".repeat(16), color: "amber" }]);
+  });
+
   it("shows the server message when the name is taken", async () => {
     fakeCategories([food]);
     renderPage();

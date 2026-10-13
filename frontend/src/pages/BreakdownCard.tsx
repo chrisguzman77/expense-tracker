@@ -97,7 +97,7 @@ export function BreakdownCard({ rows, error }: Props) {
             ))}
             {spent.length > LEGEND_SIZE && (
               <li>
-                <Link to="/summary" className="font-medium text-accent">
+                <Link to="/summary" className="inline-flex min-h-11 items-center font-medium text-accent">
                   + {spent.length - LEGEND_SIZE} more
                 </Link>
               </li>

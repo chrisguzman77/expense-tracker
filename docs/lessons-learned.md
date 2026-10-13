@@ -56,6 +56,16 @@ and the takeaway. Newest last. Design decisions themselves are in [decisions/](d
 - *Takeaway:* when a test reads a file, assert something about its content first, so an empty
   read fails loudly instead of passing vacuously.
 
+**A refreshed list wasn't refreshed** (final review, 2026-10-13)
+- *Cause:* after creating a category from the new-category screen, `invalidateQueries` only
+  refetches queries some component is currently showing; the category list had no observer
+  there, so the expense form came back with the old list and the select silently showed a
+  different category than the one being saved.
+- *Fix:* refetch with `refetchType: "all"` before navigating back, plus a test that walks the
+  whole flow across both screens.
+- *Takeaway:* per-page tests each start from a fresh fetch; flows that hand state between
+  screens need a test that crosses them.
+
 ## Local development
 
 **Ports already taken by other projects** (2026-10-02 and 2026-10-06)
