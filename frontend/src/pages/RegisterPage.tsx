@@ -3,6 +3,10 @@ import { useForm } from "react-hook-form";
 import { Link, useNavigate } from "react-router-dom";
 import { z } from "zod";
 import { useRegister } from "../api/auth";
+import { AuthCard } from "../components/AuthCard";
+import { Button } from "../components/Button";
+import { Field } from "../components/Field";
+import { inputClass } from "../components/styles";
 
 // Mirrors the backend UserCreate schema: password 8..120 characters.
 const schema = z.object({
@@ -33,31 +37,29 @@ export function RegisterPage() {
   });
 
   return (
-    <main className="mx-auto mt-16 max-w-sm p-4">
-      <h1 className="mb-6 text-2xl font-semibold">Create account</h1>
+    <AuthCard title="Create account">
       <form onSubmit={onSubmit} noValidate className="flex flex-col gap-4">
-        <div className="flex flex-col gap-1">
-          <label htmlFor="email">Email</label>
-          <input id="email" type="email" autoComplete="email" className="rounded border p-2" {...register("email")} />
-          {errors.email && <p className="text-sm text-red-600">{errors.email.message}</p>}
-        </div>
-        <div className="flex flex-col gap-1">
-          <label htmlFor="password">Password</label>
-          <input id="password" type="password" autoComplete="new-password" className="rounded border p-2" {...register("password")} />
-          {errors.password && <p className="text-sm text-red-600">{errors.password.message}</p>}
-        </div>
+        <Field label="Email" htmlFor="email" error={errors.email?.message}>
+          <input id="email" type="email" autoComplete="email" className={inputClass} {...register("email")} />
+        </Field>
+        <Field label="Password" htmlFor="password" error={errors.password?.message}>
+          <input id="password" type="password" autoComplete="new-password" className={inputClass} {...register("password")} />
+        </Field>
         {registerUser.isError && (
-          <p role="alert" className="text-sm text-red-600">
+          <p role="alert" className="text-sm text-danger">
             {registerUser.error.message}
           </p>
         )}
-        <button type="submit" disabled={isSubmitting} className="rounded bg-black px-4 py-2 text-white disabled:opacity-50">
+        <Button type="submit" disabled={isSubmitting} className="mt-2 w-full">
           Create account
-        </button>
+        </Button>
       </form>
-      <p className="mt-4 text-sm">
-        Already have an account? <Link to="/login" className="underline">Log in</Link>
+      <p className="mt-4 text-sm text-muted">
+        Already have an account?{" "}
+        <Link to="/login" className="font-semibold text-accent">
+          Log in
+        </Link>
       </p>
-    </main>
+    </AuthCard>
   );
 }
