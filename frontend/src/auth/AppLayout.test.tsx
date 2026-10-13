@@ -1,9 +1,10 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { createMemoryRouter, RouterProvider } from "react-router-dom";
 import { describe, expect, it } from "vitest";
+import { GradientHeader } from "../components/GradientHeader";
 import { server } from "../test/server";
 import { AppLayout } from "./AppLayout";
 import { RequireAuth } from "./RequireAuth";
@@ -17,13 +18,21 @@ function renderLayout() {
           {
             element: <AppLayout />,
             children: [
-              { path: "/", element: <div>home content</div> },
-              { path: "/categories", element: <div>categories content</div> },
+              {
+                path: "/",
+                element: (
+                  <GradientHeader>
+                    <p>home content</p>
+                  </GradientHeader>
+                ),
+              },
+              { path: "/categories", element: <p>categories content</p> },
             ],
           },
+          { path: "/settings", element: <p>settings screen</p> },
         ],
       },
-      { path: "/login", element: <div>login page</div> },
+      { path: "/login", element: <p>login page</p> },
     ],
     { initialEntries: ["/"] },
   );
@@ -33,47 +42,44 @@ function renderLayout() {
       <RouterProvider router={router} />
     </QueryClientProvider>,
   );
-  return { queryClient };
 }
 
 const me = () => http.get("/api/auth/me", () => HttpResponse.json({ id: 1, email: "chris@example.com" }));
 
 describe("AppLayout", () => {
-  it("shows the signed-in user's email and the child route", async () => {
+  it("renders the child route with a tab bar", async () => {
     server.use(me());
-
     renderLayout();
 
-    expect(await screen.findByText(/chris@example.com/)).toBeInTheDocument();
-    expect(screen.getByText("home content")).toBeInTheDocument();
+    expect(await screen.findByText("home content")).toBeInTheDocument();
+    const tabs = screen.getByRole("navigation", { name: "Tab bar" });
+    expect(within(tabs).getAllByRole("link").map((l) => l.textContent)).toEqual(["Expenses", "Summary", "Categories"]);
   });
 
-  it("navigates between sections", async () => {
+  it("switches tabs from the tab bar", async () => {
     server.use(me());
     renderLayout();
-    const user = userEvent.setup();
+    await screen.findByText("home content");
 
-    await user.click(await screen.findByRole("link", { name: /categories/i }));
+    await userEvent.setup().click(within(screen.getByRole("navigation", { name: "Tab bar" })).getByRole("link", { name: "Categories" }));
 
     expect(await screen.findByText("categories content")).toBeInTheDocument();
   });
 
-  it("logs out, clears cached auth, and goes to /login", async () => {
-    let loggedOut = false;
-    server.use(
-      me(),
-      http.post("/api/auth/logout", () => {
-        loggedOut = true;
-        return new HttpResponse(null, { status: 204 });
-      }),
-    );
-    const { queryClient } = renderLayout();
-    const user = userEvent.setup();
+  it("opens settings from the header's gear button", async () => {
+    server.use(me());
+    renderLayout();
 
-    await user.click(await screen.findByRole("button", { name: /log out/i }));
+    await userEvent.setup().click(await screen.findByRole("link", { name: "Settings" }));
 
-    expect(await screen.findByText("login page")).toBeInTheDocument();
-    expect(loggedOut).toBe(true);
-    expect(queryClient.getQueryData(["me"])).toBeUndefined();
+    expect(await screen.findByText("settings screen")).toBeInTheDocument();
+  });
+
+  it("puts the same tabs in the header for wide screens", async () => {
+    server.use(me());
+    renderLayout();
+
+    const top = await screen.findByRole("navigation", { name: "Top navigation" });
+    expect(within(top).getAllByRole("link").map((l) => l.textContent)).toEqual(["Expenses", "Summary", "Categories"]);
   });
 });

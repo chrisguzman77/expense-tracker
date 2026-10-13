@@ -3,6 +3,10 @@ import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
 import { z } from "zod";
 import { useLogin } from "../api/auth";
+import { AuthCard } from "../components/AuthCard";
+import { Button } from "../components/Button";
+import { Field } from "../components/Field";
+import { inputClass } from "../components/styles";
 
 // Mirrors the backend UserLogin schema: no password length rules on login.
 const schema = z.object({
@@ -30,28 +34,23 @@ export function LoginPage() {
   });
 
   return (
-    <main className="mx-auto mt-16 max-w-sm p-4">
-      <h1 className="mb-6 text-2xl font-semibold">Log in</h1>
+    <AuthCard title="Log in">
       <form onSubmit={onSubmit} noValidate className="flex flex-col gap-4">
-        <div className="flex flex-col gap-1">
-          <label htmlFor="email">Email</label>
-          <input id="email" type="email" autoComplete="email" className="rounded border p-2" {...register("email")} />
-          {errors.email && <p className="text-sm text-red-600">{errors.email.message}</p>}
-        </div>
-        <div className="flex flex-col gap-1">
-          <label htmlFor="password">Password</label>
-          <input id="password" type="password" autoComplete="current-password" className="rounded border p-2" {...register("password")} />
-          {errors.password && <p className="text-sm text-red-600">{errors.password.message}</p>}
-        </div>
+        <Field label="Email" htmlFor="email" error={errors.email?.message}>
+          <input id="email" type="email" autoComplete="email" className={inputClass} {...register("email")} />
+        </Field>
+        <Field label="Password" htmlFor="password" error={errors.password?.message}>
+          <input id="password" type="password" autoComplete="current-password" className={inputClass} {...register("password")} />
+        </Field>
         {login.isError && (
-          <p role="alert" className="text-sm text-red-600">
+          <p role="alert" className="text-sm text-danger">
             {login.error.message}
           </p>
         )}
-        <button type="submit" disabled={isSubmitting} className="rounded bg-black px-4 py-2 text-white disabled:opacity-50">
+        <Button type="submit" disabled={isSubmitting} className="mt-2 w-full">
           Log in
-        </button>
+        </Button>
       </form>
-    </main>
+    </AuthCard>
   );
 }

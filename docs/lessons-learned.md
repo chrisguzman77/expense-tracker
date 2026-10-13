@@ -41,6 +41,31 @@ and the takeaway. Newest last. Design decisions themselves are in [decisions/](d
   enabled; this project doesn't enable them.
 - *Fix:* call `cleanup()` in `afterEach` in the shared test setup.
 
+**Negative amounts would have been off by a dollar** (found while planning the redesign, 2026-10-12)
+- *Cause:* `toCents("-12.5")` split on the dot and computed `-12 * 100 + 50 = -1150`, adding
+  the cents to a negative whole part. Formatting `-50` cents also lost the sign (`-0` prints as
+  `0`).
+- *Impact:* none yet; amounts are always positive today. Refunds and imported bank
+  transactions will be negative.
+- *Fix:* handle the sign separately from the digits, with tests for negative values.
+
+**A test read the stylesheet and got an empty string** (found while planning, 2026-10-12)
+- *Cause:* Vitest skips CSS processing by default and replaces every CSS import with an empty
+  string, including `?raw` imports meant to read the file as text.
+- *Fix:* `test.css.include` in the Vite config for `index.css` only.
+- *Takeaway:* when a test reads a file, assert something about its content first, so an empty
+  read fails loudly instead of passing vacuously.
+
+**A refreshed list wasn't refreshed** (final review, 2026-10-13)
+- *Cause:* after creating a category from the new-category screen, `invalidateQueries` only
+  refetches queries some component is currently showing; the category list had no observer
+  there, so the expense form came back with the old list and the select silently showed a
+  different category than the one being saved.
+- *Fix:* refetch with `refetchType: "all"` before navigating back, plus a test that walks the
+  whole flow across both screens.
+- *Takeaway:* per-page tests each start from a fresh fetch; flows that hand state between
+  screens need a test that crosses them.
+
 ## Local development
 
 **Ports already taken by other projects** (2026-10-02 and 2026-10-06)
@@ -113,6 +138,14 @@ and the takeaway. Newest last. Design decisions themselves are in [decisions/](d
 
 **GitHub's API: required checks are updated with PATCH** (2026-10-11)
 - `PUT .../protection/required_status_checks` returns 404. The endpoint only accepts `PATCH`.
+
+**nginx didn't know what a `.webmanifest` was** (found while planning, 2026-10-12)
+- *Cause:* the `nginx:1.27-alpine` image's MIME table has no entry for `.webmanifest`, so the
+  manifest would have been served as `application/octet-stream`.
+- *Fix:* an exact-match location for `/manifest.webmanifest` that sets
+  `application/manifest+json`. Checked with `curl -I` against the built image.
+- *Takeaway:* when adding a new kind of static file, check the `Content-Type` the server
+  actually sends.
 
 ## Backups
 

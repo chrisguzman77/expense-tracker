@@ -117,3 +117,65 @@ otherwise; the setup guide opens it only for the first sign-up
 
 **Next:** confirm the first scheduled 3 a.m. backup; phone polish (icons, full-screen,
 layout); then piece 2, accounts and transactions with CSV import.
+
+## 2026-10-12 — Rolling out closed registration; designing the redesign
+
+Rolled the closed-registration release out to the VM. The first attempt ran the commands from
+the home directory instead of `~/expense-tracker`, so compose found no `.env`. Nothing changed:
+the production compose file requires every secret with `${VAR:?}`, so compose refused to start
+instead of running with blank secrets. Re-ran from the right directory; the closure probe
+returned `403`.
+
+A false alarm along the way: my account seemed to be missing when logging in from my phone. It
+was a typo on the phone keyboard. Worth remembering that checking the simple explanation first
+(log in again, carefully) beats digging into the database.
+
+Then designed the UI redesign with mockups in a browser companion: a bold gradient style,
+category colors and emoji, a donut breakdown that can collapse, separate screens for adding and
+viewing an expense, a responsive layout for the laptop, light/dark/system themes, and a
+home-screen icon so the app launches full screen on the iPhone. Wrote the
+[spec](superpowers/specs/2026-10-12-ui-redesign-design.md) and a four-PR plan. Longer phone
+sessions are deliberately a separate, later project because they change auth.
+
+## 2026-10-13 — The redesign
+
+Built the redesign in four pull requests, each task implemented by one agent and reviewed by
+another before the next started:
+
+1. Categories got a color (one of ten named palette colors, checked by the API) and an emoji,
+   with a migration that gives existing categories a default (#25).
+2. The foundation: colors as CSS variables with a light/dark/system theme, a small set of
+   hand-built components with no UI library
+   ([decision 18](decisions/0018-hand-built-ui-components.md)), a bottom tab bar that moves into
+   the header on a laptop, a Settings screen, and the restyled login (#26).
+3. The screens: the Expenses tab with this month's total and a collapsible donut breakdown,
+   separate screens for adding and viewing an expense, an emoji and color picker for categories,
+   and a Summary tab with month arrows (#27).
+4. The home-screen app: an icon, a web app manifest, the iPhone tags for full-screen launch, and
+   nginx headers so the installed app picks up new versions
+   ([decision 15](decisions/0015-mobile-access-as-home-screen-web-app.md), now accepted).
+
+Things found along the way, all in [lessons learned](lessons-learned.md): negative
+amounts would have been off by a dollar, Vitest silently reads stylesheets as empty strings,
+and nginx didn't know what a `.webmanifest` file was.
+
+The final review of the whole project caught two bugs that every per-task review had missed,
+because each task tested its own screen in isolation:
+
+- Creating a category from the add-expense screen came back showing one category while the form
+  would have saved the expense under the new one. The category list wasn't refetched because no
+  screen was showing it. Fixed, with a test that walks the whole flow across both screens.
+- On the iPhone home-screen app the clock and battery would have disappeared on the white
+  pushed screens, because that status bar style always draws white text. Those screens now paint
+  the strip behind it with the gradient.
+
+It also caught that the runbook said to take a backup before a migration *after* the deploy
+commands. Moved it first.
+
+Checked every screen at iPhone width in light and dark, and at laptop width, with headless
+Chrome driven over the DevTools protocol and a throwaway local account. 79 frontend and 18
+backend tests pass.
+
+**Next:** deploy (backup first, then pull and up), install on the iPhone, then longer sessions
+on trusted devices, the password-length fix, and piece 2, accounts and transactions with CSV
+import.

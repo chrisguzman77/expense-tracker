@@ -1,60 +1,96 @@
 import { useState } from "react";
 import { useSummary } from "../api/summary";
-import { formatAmount, sumAmounts } from "../lib/money";
+import { Card } from "../components/Card";
+import { CategoryChip } from "../components/CategoryChip";
+import { Donut } from "../components/Donut";
+import { GradientHeader } from "../components/GradientHeader";
+import { ChevronLeftIcon, ChevronRightIcon } from "../components/icons";
+import { MoneyText } from "../components/MoneyText";
+import { currentMonthValue, monthLabel, shiftMonth } from "../lib/dates";
+import { formatCents, sharePercent, toCents } from "../lib/money";
+import { colorVar } from "../lib/palette";
 
-function currentMonthValue(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-}
+const arrowClass = "inline-flex size-11 items-center justify-center rounded-full bg-white/20 disabled:opacity-40";
 
 export function SummaryPage() {
-  // <input type="month"> value is "YYYY-MM"; the API wants separate ints.
-  const [monthValue, setMonthValue] = useState(currentMonthValue);
+  const thisMonth = currentMonthValue();
+  const [monthValue, setMonthValue] = useState(thisMonth);
   const [year, month] = monthValue.split("-").map(Number);
   const summary = useSummary(year, month);
 
-  return (
-    <section className="flex flex-col gap-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold">Monthly summary</h2>
-        <div className="flex items-center gap-2">
-          <label htmlFor="month">Month</label>
-          <input
-            id="month"
-            type="month"
-            value={monthValue}
-            onChange={(e) => e.target.value && setMonthValue(e.target.value)}
-            className="rounded border p-2"
-          />
-        </div>
-      </div>
+  // The API sorts by total, largest first, with unused categories (0) last.
+  const rows = summary.data ?? [];
+  const totalCents = rows.reduce((sum, r) => sum + toCents(r.total), 0);
+  const segments = rows
+    .filter((r) => toCents(r.total) > 0)
+    .map((r) => ({ key: r.category_id, color: colorVar(r.color), cents: toCents(r.total) }));
 
-      {summary.isPending && <p>Loading…</p>}
-      {summary.isError && <p className="text-sm text-red-600">{summary.error.message}</p>}
-      {summary.data && (
-        <table aria-label="Summary" className="w-full text-left">
-          <thead>
-            <tr className="border-b text-sm text-gray-500">
-              <th className="py-2 font-normal">Category</th>
-              <th className="py-2 text-right font-normal">Total</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y">
-            {summary.data.map((row) => (
-              <tr key={row.category_id}>
-                <td className="py-2">{row.name}</td>
-                <td className="py-2 text-right tabular-nums">{formatAmount(row.total)}</td>
-              </tr>
-            ))}
-          </tbody>
-          <tfoot>
-            <tr className="border-t font-semibold">
-              <td className="py-2">Total</td>
-              <td className="py-2 text-right tabular-nums">{sumAmounts(summary.data.map((r) => r.total))}</td>
-            </tr>
-          </tfoot>
-        </table>
-      )}
-    </section>
+  return (
+    <>
+      <GradientHeader>
+        <div className="mt-2 flex items-center justify-between gap-2">
+          <button type="button" aria-label="Previous month" onClick={() => setMonthValue(shiftMonth(monthValue, -1))} className={arrowClass}>
+            <ChevronLeftIcon className="size-6" />
+          </button>
+          <div className="text-center">
+            <h1 className="text-sm font-medium text-white/90">{monthLabel(monthValue)}</h1>
+            <p className="text-3xl font-extrabold tracking-tight tabular-nums">{summary.data ? formatCents(totalCents) : "—"}</p>
+          </div>
+          <button
+            type="button"
+            aria-label="Next month"
+            onClick={() => setMonthValue(shiftMonth(monthValue, 1))}
+            disabled={monthValue === thisMonth}
+            className={arrowClass}
+          >
+            <ChevronRightIcon className="size-6" />
+          </button>
+        </div>
+      </GradientHeader>
+
+      <main className="mx-auto flex max-w-2xl flex-col gap-4 px-4 py-5">
+        {summary.isPending && <p className="text-muted">Loading…</p>}
+        {summary.isError && (
+          <p role="alert" className="text-sm text-danger">
+            {summary.error.message}
+          </p>
+        )}
+        {summary.data && totalCents === 0 && (
+          <Card className="p-6 text-center text-muted">No spending in {monthLabel(monthValue)}</Card>
+        )}
+        {summary.data && totalCents > 0 && (
+          <Card className="p-4">
+            <div className="flex justify-center py-2">
+              <Donut segments={segments} size={160} thickness={24} />
+            </div>
+            <ul aria-label="Categories this month" className="mt-2 flex flex-col">
+              {rows.map((r) => {
+                const cents = toCents(r.total);
+                const percent = sharePercent(cents, totalCents);
+                return (
+                  <li key={r.category_id} className="py-2.5">
+                    <div className="flex items-center gap-3">
+                      <CategoryChip category={r} size="sm" />
+                      <span className="min-w-0 flex-1 truncate font-semibold">{r.name}</span>
+                      <MoneyText amount={r.total} className="font-bold" />
+                      {cents > 0 ? (
+                        <span className="w-10 text-right text-sm text-muted tabular-nums">{percent}%</span>
+                      ) : (
+                        <span className="w-10" aria-hidden="true" />
+                      )}
+                    </div>
+                    {cents > 0 && (
+                      <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-app">
+                        <div className="h-full rounded-full" style={{ width: `${percent}%`, backgroundColor: colorVar(r.color) }} />
+                      </div>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          </Card>
+        )}
+      </main>
+    </>
   );
 }
