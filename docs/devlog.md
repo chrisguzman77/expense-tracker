@@ -117,3 +117,22 @@ otherwise; the setup guide opens it only for the first sign-up
 
 **Next:** confirm the first scheduled 3 a.m. backup; phone polish (icons, full-screen,
 layout); then piece 2, accounts and transactions with CSV import.
+
+## 2026-10-12 — Rolling out closed registration; designing the redesign
+
+Rolled the closed-registration release out to the VM. The first attempt ran the commands from
+the home directory instead of `~/expense-tracker`, so compose found no `.env`. Nothing changed:
+the production compose file requires every secret with `${VAR:?}`, so compose refused to start
+instead of running with blank secrets. Re-ran from the right directory; the closure probe
+returned `403`.
+
+A false alarm along the way: my account seemed to be missing when logging in from my phone. It
+was a typo on the phone keyboard. Worth remembering that checking the simple explanation first
+(log in again, carefully) beats digging into the database.
+
+Then designed the UI redesign with mockups in a browser companion: a bold gradient style,
+category colors and emoji, a donut breakdown that can collapse, separate screens for adding and
+viewing an expense, a responsive layout for the laptop, light/dark/system themes, and a
+home-screen icon so the app launches full screen on the iPhone. Wrote the
+[spec](superpowers/specs/2026-10-12-ui-redesign-design.md) and a four-PR plan. Longer phone
+sessions are deliberately a separate, later project because they change auth.
