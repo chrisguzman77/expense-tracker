@@ -10,7 +10,7 @@ function isUnauthorized(error: unknown): boolean {
 // and let /me find out: its 401 makes RequireAuth redirect to /login.
 function endSession(queryClient: QueryClient) {
   queryClient.removeQueries({ predicate: (query) => query.queryKey[0] !== meQueryKey[0] });
-  void queryClient.invalidateQueries({ queryKey: meQueryKey });
+  void queryClient.invalidateQueries({ queryKey: meQueryKey }, { cancelRefetch: false });
 }
 
 export function createQueryClient(): QueryClient {

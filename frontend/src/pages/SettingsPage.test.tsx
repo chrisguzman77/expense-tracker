@@ -111,4 +111,23 @@ describe("SettingsPage", () => {
     expect(screen.queryByText("This logs out every device, including this one.")).not.toBeInTheDocument();
     expect(calls).toBe(0);
   });
+
+  it("shows an error if log out everywhere fails, and Cancel clears it", async () => {
+    server.use(
+      me(),
+      http.post("/api/auth/logout-all", () => HttpResponse.json({ detail: "Server error" }, { status: 500 })),
+    );
+    renderSettings();
+    await screen.findByText("chris@example.com");
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole("button", { name: "Log out everywhere" }));
+    await user.click(screen.getByRole("button", { name: "Confirm" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Server error");
+    expect(screen.queryByText("login page")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
 });

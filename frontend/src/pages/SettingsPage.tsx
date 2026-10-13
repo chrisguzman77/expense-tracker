@@ -85,7 +85,13 @@ export function SettingsPage() {
           <Card className="flex flex-col gap-3 p-4">
             <p className="font-medium">This logs out every device, including this one.</p>
             <div className="grid grid-cols-2 gap-3">
-              <Button variant="secondary" onClick={() => setConfirmingEverywhere(false)}>
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setConfirmingEverywhere(false);
+                  logoutEverywhere.reset();
+                }}
+              >
                 Cancel
               </Button>
               <Button variant="danger" onClick={onLogoutEverywhere} disabled={logoutEverywhere.isPending}>
