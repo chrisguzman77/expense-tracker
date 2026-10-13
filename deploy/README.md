@@ -163,14 +163,19 @@ If nothing is listed, skip this section. Otherwise, from `~/expense-tracker`:
 
 ## Deploying a new version
 
-Merge `dev` into `main`, wait for the CI `publish` job, then on the VM:
+Merge `dev` into `main`, wait for the CI `publish` job, then on the VM.
+
+If the release adds a database migration, take a backup first:
+```
+cd ~/expense-tracker
+docker compose run --rm backup backup-now
+```
+Then deploy:
 ```
 cd ~/expense-tracker
 docker compose pull
 docker compose up -d
 ```
-If the release adds a database migration, take a backup first:
-`docker compose run --rm backup backup-now`.
 
 The home-screen app picks up the new version the next time it is opened (close it from the app
 switcher and reopen).
