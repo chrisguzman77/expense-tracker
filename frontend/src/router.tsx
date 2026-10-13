@@ -5,6 +5,7 @@ import { CategoriesPage } from "./pages/CategoriesPage";
 import { ExpensesPage } from "./pages/ExpensesPage";
 import { LoginPage } from "./pages/LoginPage";
 import { RegisterPage } from "./pages/RegisterPage";
+import { SettingsPage } from "./pages/SettingsPage";
 import { SummaryPage } from "./pages/SummaryPage";
 
 export const router = createBrowserRouter([
@@ -14,6 +15,7 @@ export const router = createBrowserRouter([
     element: <RequireAuth />,
     children: [
       {
+        // Tabs: share the bottom tab bar.
         element: <AppLayout />,
         children: [
           { path: "/", element: <ExpensesPage /> },
@@ -21,6 +23,8 @@ export const router = createBrowserRouter([
           { path: "/summary", element: <SummaryPage /> },
         ],
       },
+      // Pushed screens: full screen with their own back button.
+      { path: "/settings", element: <SettingsPage /> },
     ],
   },
 ]);
