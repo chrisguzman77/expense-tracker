@@ -1,86 +1,59 @@
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { useCategories, useCreateCategory, useDeleteCategory } from "../api/categories";
+import { useCategories, useDeleteCategory } from "../api/categories";
+import { Card } from "../components/Card";
+import { CategoryChip } from "../components/CategoryChip";
 import { GradientHeader } from "../components/GradientHeader";
-
-// Mirrors the backend CategoryCreate schema: name 1..50 characters.
-const schema = z.object({
-  name: z.string().trim().min(1, "Name is required").max(50, "Name must be at most 50 characters"),
-});
-type FormValues = z.infer<typeof schema>;
+import { TrashIcon } from "../components/icons";
+import { CategoryForm } from "./CategoryForm";
 
 export function CategoriesPage() {
   const categories = useCategories();
-  const create = useCreateCategory();
   const remove = useDeleteCategory();
-  const {
-    register,
-    handleSubmit,
-    reset,
-    formState: { errors, isSubmitting },
-  } = useForm<FormValues>({ resolver: zodResolver(schema) });
-
-  const onSubmit = handleSubmit(async (values) => {
-    try {
-      // Explicit defaults until the redesigned form adds a color/emoji picker.
-      await create.mutateAsync({ ...values, color: "slate", icon: "🏷️" });
-      reset();
-    } catch {
-      // Shown below via create.error
-    }
-  });
-
-  const serverError = create.error ?? remove.error;
 
   return (
     <>
-      <GradientHeader>
+      <GradientHeader overlap>
         <h1 className="mt-2 text-3xl font-extrabold">Categories</h1>
       </GradientHeader>
-      <section className="mx-auto flex max-w-2xl flex-col gap-6 px-4 py-6">
+      <main className="mx-auto -mt-10 flex max-w-2xl flex-col gap-4 px-4">
+        <Card className="p-4">
+          <h2 className="mb-3 font-bold">New category</h2>
+          <CategoryForm />
+        </Card>
 
-        <form onSubmit={onSubmit} noValidate className="flex flex-col gap-1">
-          <div className="flex gap-2">
-            <label htmlFor="name" className="sr-only">
-              New category
-            </label>
-            <input id="name" placeholder="New category" className="flex-1 rounded border p-2" {...register("name")} />
-            <button type="submit" disabled={isSubmitting} className="rounded bg-black px-4 py-2 text-white disabled:opacity-50">
-              Add
-            </button>
-          </div>
-          {errors.name && <p className="text-sm text-red-600">{errors.name.message}</p>}
-        </form>
-
-        {serverError && (
-          <p role="alert" className="text-sm text-red-600">
-            {serverError.message}
+        {remove.isError && (
+          <p role="alert" className="text-sm text-danger">
+            {remove.error.message}
           </p>
         )}
-
-        {categories.isPending && <p>Loading…</p>}
-        {categories.isError && <p className="text-sm text-red-600">{categories.error.message}</p>}
-        {categories.data && (
-          <ul aria-label="Categories" className="divide-y rounded border">
-            {categories.data.map((category) => (
-              <li key={category.id} className="flex items-center justify-between p-3">
-                <span>{category.name}</span>
-                <button
-                  type="button"
-                  onClick={() => remove.mutate(category.id)}
-                  disabled={remove.isPending}
-                  aria-label={`Delete ${category.name}`}
-                  className="text-sm text-red-600 underline disabled:opacity-50"
-                >
-                  Delete
-                </button>
-              </li>
-            ))}
-            {categories.data.length === 0 && <li className="p-3 text-sm text-gray-500">No categories yet.</li>}
-          </ul>
+        {categories.isPending && <p className="text-muted">Loading…</p>}
+        {categories.isError && (
+          <p role="alert" className="text-sm text-danger">
+            {categories.error.message}
+          </p>
         )}
-      </section>
+        {categories.data && (
+          <Card>
+            <ul aria-label="Categories" className="divide-y divide-line">
+              {categories.data.map((c) => (
+                <li key={c.id} className="flex min-h-14 items-center gap-3 px-3 py-2">
+                  <CategoryChip category={c} />
+                  <span className="min-w-0 flex-1 truncate font-semibold">{c.name}</span>
+                  <button
+                    type="button"
+                    onClick={() => remove.mutate(c.id)}
+                    disabled={remove.isPending}
+                    aria-label={`Delete ${c.name}`}
+                    className="inline-flex size-11 items-center justify-center rounded-full text-muted hover:text-danger disabled:opacity-50"
+                  >
+                    <TrashIcon className="size-5" />
+                  </button>
+                </li>
+              ))}
+              {categories.data.length === 0 && <li className="p-4 text-sm text-muted">No categories yet.</li>}
+            </ul>
+          </Card>
+        )}
+      </main>
     </>
   );
 }

@@ -7,32 +7,33 @@ import { describe, expect, it } from "vitest";
 import { server } from "../test/server";
 import { CategoriesPage } from "./CategoriesPage";
 
-type Category = { id: number; name: string };
+type Category = { id: number; name: string; color: string; icon: string };
 
 // A tiny in-memory backend so list/create/delete interact like the real API.
 function fakeCategories(initial: Category[]) {
   const rows = [...initial];
   let nextId = Math.max(0, ...rows.map((r) => r.id)) + 1;
+  const posted: unknown[] = [];
   server.use(
     http.get("/api/categories", () => HttpResponse.json(rows)),
     http.post("/api/categories", async ({ request }) => {
-      const { name } = (await request.json()) as { name: string };
-      if (rows.some((r) => r.name === name)) {
+      const body = (await request.json()) as { name: string; color: string; icon: string };
+      posted.push(body);
+      if (rows.some((r) => r.name === body.name)) {
         return HttpResponse.json({ detail: "Category name taken" }, { status: 409 });
       }
-      const row = { id: nextId++, name };
+      const row = { id: nextId++, ...body };
       rows.push(row);
       return HttpResponse.json(row, { status: 201 });
     }),
     http.delete("/api/categories/:id", ({ params }) => {
       const id = Number(params.id);
       if (id === 99) return HttpResponse.json({ detail: "Category has expenses" }, { status: 409 });
-      const i = rows.findIndex((r) => r.id === id);
-      rows.splice(i, 1);
+      rows.splice(rows.findIndex((r) => r.id === id), 1);
       return new HttpResponse(null, { status: 204 });
     }),
   );
-  return rows;
+  return { posted };
 }
 
 function renderPage() {
@@ -47,67 +48,84 @@ function renderPage() {
   );
 }
 
+const food = { id: 1, name: "Food", color: "amber", icon: "🍔" };
+const rent = { id: 2, name: "Rent", color: "sky", icon: "🏠" };
+
 describe("CategoriesPage", () => {
   it("lists the user's categories", async () => {
-    fakeCategories([
-      { id: 1, name: "Food" },
-      { id: 2, name: "Rent" },
-    ]);
+    fakeCategories([food, rent]);
     renderPage();
 
-    const list = await screen.findByRole("list", { name: /categories/i });
-    expect(within(list).getAllByRole("listitem").map((li) => li.textContent)).toEqual(
-      expect.arrayContaining([expect.stringContaining("Food"), expect.stringContaining("Rent")]),
-    );
+    const list = await screen.findByRole("list", { name: "Categories" });
+    expect(within(list).getAllByRole("listitem").map((li) => li.textContent)).toEqual([
+      expect.stringContaining("Food"),
+      expect.stringContaining("Rent"),
+    ]);
   });
 
-  it("creates a category and shows it in the list", async () => {
-    fakeCategories([{ id: 1, name: "Food" }]);
+  it("creates a category with a name, emoji and color", async () => {
+    const { posted } = fakeCategories([food]);
     renderPage();
     const user = userEvent.setup();
     await screen.findByText("Food");
 
-    await user.type(screen.getByLabelText(/new category/i), "Travel");
-    await user.click(screen.getByRole("button", { name: /add/i }));
+    await user.type(screen.getByLabelText("Name"), "Travel");
+    await user.clear(screen.getByLabelText("Emoji"));
+    await user.type(screen.getByLabelText("Emoji"), "✈️");
+    await user.click(screen.getByRole("radio", { name: "Teal" }));
+    await user.click(screen.getByRole("button", { name: "Add category" }));
 
-    expect(await screen.findByText("Travel")).toBeInTheDocument();
-    expect(screen.getByLabelText(/new category/i)).toHaveValue("");
+    const list = screen.getByRole("list", { name: "Categories" });
+    expect(await within(list).findByText("Travel")).toBeInTheDocument();
+    expect(posted).toEqual([{ name: "Travel", icon: "✈️", color: "teal" }]);
+    expect(screen.getByLabelText("Name")).toHaveValue("");
+    expect(screen.getByLabelText("Emoji")).toHaveValue("🏷️");
+  });
+
+  it("rejects an emoji field longer than 16 characters without calling the API", async () => {
+    const { posted } = fakeCategories([food]);
+    renderPage();
+    const user = userEvent.setup();
+    await screen.findByText("Food");
+
+    await user.type(screen.getByLabelText("Name"), "Long");
+    await user.clear(screen.getByLabelText("Emoji"));
+    await user.type(screen.getByLabelText("Emoji"), "x".repeat(17));
+    await user.click(screen.getByRole("button", { name: "Add category" }));
+
+    expect(await screen.findByText(/at most 16/i)).toBeInTheDocument();
+    expect(posted).toEqual([]);
   });
 
   it("shows the server message when the name is taken", async () => {
-    fakeCategories([{ id: 1, name: "Food" }]);
+    fakeCategories([food]);
     renderPage();
     const user = userEvent.setup();
     await screen.findByText("Food");
 
-    await user.type(screen.getByLabelText(/new category/i), "Food");
-    await user.click(screen.getByRole("button", { name: /add/i }));
+    await user.type(screen.getByLabelText("Name"), "Food");
+    await user.click(screen.getByRole("button", { name: "Add category" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Category name taken");
   });
 
   it("deletes an empty category", async () => {
-    fakeCategories([
-      { id: 1, name: "Food" },
-      { id: 2, name: "Rent" },
-    ]);
+    fakeCategories([food, rent]);
     renderPage();
     const user = userEvent.setup();
-    const rent = (await screen.findByText("Rent")).closest("li")!;
 
-    await user.click(within(rent).getByRole("button", { name: /delete/i }));
+    await user.click(await screen.findByRole("button", { name: "Delete Rent" }));
 
     await screen.findByText("Food");
     expect(screen.queryByText("Rent")).not.toBeInTheDocument();
   });
 
   it("shows the server message when deleting a category with expenses", async () => {
-    fakeCategories([{ id: 99, name: "Food" }]);
+    fakeCategories([{ ...food, id: 99 }]);
     renderPage();
     const user = userEvent.setup();
-    const food = (await screen.findByText("Food")).closest("li")!;
 
-    await user.click(within(food).getByRole("button", { name: /delete/i }));
+    await user.click(await screen.findByRole("button", { name: "Delete Food" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Category has expenses");
     expect(screen.getByText("Food")).toBeInTheDocument();
