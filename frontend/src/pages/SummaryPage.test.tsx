@@ -1,27 +1,28 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { createMemoryRouter, RouterProvider } from "react-router-dom";
 import { describe, expect, it } from "vitest";
+import { currentMonthValue, monthLabel, shiftMonth } from "../lib/dates";
 import { server } from "../test/server";
 import { SummaryPage } from "./SummaryPage";
 
-function currentMonth() {
-  const d = new Date();
-  return { year: d.getFullYear(), month: d.getMonth() + 1 };
-}
+type Row = { category_id: number; name: string; color: string; icon: string; total: string };
 
-function fakeSummary() {
-  const requested: { year: string | null; month: string | null }[] = [];
+const spending: Row[] = [
+  { category_id: 1, name: "Rent", color: "sky", icon: "🏠", total: "900.00" },
+  { category_id: 2, name: "Food", color: "amber", icon: "🍔", total: "12.50" },
+  { category_id: 3, name: "Travel", color: "teal", icon: "✈️", total: "0" },
+];
+
+function fakeSummary(rows: Row[]) {
+  const requested: string[] = [];
   server.use(
     http.get("/api/summary", ({ request }) => {
       const url = new URL(request.url);
-      requested.push({ year: url.searchParams.get("year"), month: url.searchParams.get("month") });
-      return HttpResponse.json([
-        { category_id: 1, name: "Rent", total: "900.00" },
-        { category_id: 2, name: "Food", total: "12.50" },
-        { category_id: 3, name: "Travel", total: "0" },
-      ]);
+      requested.push(`${url.searchParams.get("year")}-${url.searchParams.get("month")}`);
+      return HttpResponse.json(rows);
     }),
   );
   return requested;
@@ -39,33 +40,45 @@ function renderPage() {
   );
 }
 
+const asParam = (value: string) => {
+  const [y, m] = value.split("-").map(Number);
+  return `${y}-${m}`;
+};
+
 describe("SummaryPage", () => {
-  it("defaults to the current month and shows per-category totals and a grand total", async () => {
-    const requested = fakeSummary();
+  it("opens on the current month with its total and categories ranked", async () => {
+    const requested = fakeSummary(spending);
     renderPage();
 
-    const table = await screen.findByRole("table", { name: /summary/i });
-    const rows = within(table).getAllByRole("row").map((r) => r.textContent);
-    expect(rows).toEqual(
-      expect.arrayContaining([
-        expect.stringMatching(/Rent.*900\.00/),
-        expect.stringMatching(/Food.*12\.50/),
-        expect.stringMatching(/Travel.*0\.00/),
-        expect.stringMatching(/Total.*912\.50/),
-      ]),
-    );
-    const { year, month } = currentMonth();
-    expect(requested).toEqual([{ year: String(year), month: String(month) }]);
+    expect(screen.getByRole("heading", { name: monthLabel(currentMonthValue()) })).toBeInTheDocument();
+    expect(await screen.findByText("$912.50")).toBeInTheDocument();
+    const list = screen.getByRole("list", { name: "Categories this month" });
+    const rows = within(list).getAllByRole("listitem").map((li) => li.textContent);
+    // Chips are aria-hidden but their emoji still count toward textContent.
+    expect(rows).toEqual(["🏠Rent$900.0099%", "🍔Food$12.501%", "✈️Travel$0.00"]);
+    expect(requested).toEqual([asParam(currentMonthValue())]);
   });
 
-  it("refetches when the month changes", async () => {
-    const requested = fakeSummary();
+  it("steps back a month and can't go past the current month", async () => {
+    const requested = fakeSummary(spending);
     renderPage();
-    await screen.findByRole("table", { name: /summary/i });
+    const user = userEvent.setup();
+    await screen.findByText("$912.50");
 
-    fireEvent.change(screen.getByLabelText(/month/i), { target: { value: "2025-03" } });
+    expect(screen.getByRole("button", { name: "Next month" })).toBeDisabled();
 
-    await screen.findByDisplayValue("2025-03");
-    await expect.poll(() => requested.at(-1)).toEqual({ year: "2025", month: "3" });
+    await user.click(screen.getByRole("button", { name: "Previous month" }));
+
+    const previous = shiftMonth(currentMonthValue(), -1);
+    expect(await screen.findByRole("heading", { name: monthLabel(previous) })).toBeInTheDocument();
+    await expect.poll(() => requested.at(-1)).toBe(asParam(previous));
+    expect(screen.getByRole("button", { name: "Next month" })).toBeEnabled();
+  });
+
+  it("says when nothing was spent that month", async () => {
+    fakeSummary([{ category_id: 3, name: "Travel", color: "teal", icon: "✈️", total: "0" }]);
+    renderPage();
+
+    expect(await screen.findByText(`No spending in ${monthLabel(currentMonthValue())}`)).toBeInTheDocument();
   });
 });
