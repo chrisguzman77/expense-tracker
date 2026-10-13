@@ -5,6 +5,7 @@ import { z } from "zod";
 import { useCategories } from "../api/categories";
 import { useCreateExpense, useDeleteExpense, useExpenses } from "../api/expenses";
 import { addDays, localToday } from "../lib/dates";
+import { GradientHeader } from "../components/GradientHeader";
 
 // Amounts stay strings end to end (NUMERIC(12,2) on the backend); we only
 // validate the shape here and never do float math on them.
@@ -57,94 +58,98 @@ export function ExpensesPage() {
   const field = "rounded border p-2";
 
   return (
-    <section className="flex flex-col gap-6">
-      <h2 className="text-xl font-semibold">Expenses</h2>
+    <>
+      <GradientHeader>
+        <h1 className="mt-2 text-3xl font-extrabold">Expenses</h1>
+      </GradientHeader>
+      <section className="mx-auto flex max-w-2xl flex-col gap-6 px-4 py-6">
 
-      {categories.data && categories.data.length === 0 && (
-        <p className="text-sm">
-          Create a category first on the{" "}
-          <Link to="/categories" className="underline">
-            Categories
-          </Link>{" "}
-          page.
-        </p>
-      )}
+        {categories.data && categories.data.length === 0 && (
+          <p className="text-sm">
+            Create a category first on the{" "}
+            <Link to="/categories" className="underline">
+              Categories
+            </Link>{" "}
+            page.
+          </p>
+        )}
 
-      {categories.data && categories.data.length > 0 && (
-        <form onSubmit={onSubmit} noValidate className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <div className="flex flex-col gap-1">
-            <label htmlFor="category_id">Category</label>
-            <select id="category_id" className={field} {...register("category_id")}>
-              {categories.data.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-            {errors.category_id && <p className="text-sm text-red-600">{errors.category_id.message}</p>}
-          </div>
-          <div className="flex flex-col gap-1">
-            <label htmlFor="amount">Amount</label>
-            <input id="amount" inputMode="decimal" placeholder="0.00" className={field} {...register("amount")} />
-            {errors.amount && <p className="text-sm text-red-600">{errors.amount.message}</p>}
-          </div>
-          <div className="flex flex-col gap-1">
-            <label htmlFor="spent_on">Date</label>
-            <input id="spent_on" type="date" className={field} {...register("spent_on")} />
-            {errors.spent_on && <p className="text-sm text-red-600">{errors.spent_on.message}</p>}
-          </div>
-          <div className="flex flex-col gap-1">
-            <label htmlFor="note">Note</label>
-            <input id="note" className={field} {...register("note")} />
-            {errors.note && <p className="text-sm text-red-600">{errors.note.message}</p>}
-          </div>
-          <button type="submit" disabled={isSubmitting} className="rounded bg-black px-4 py-2 text-white disabled:opacity-50 sm:col-span-2">
-            Add expense
-          </button>
-        </form>
-      )}
+        {categories.data && categories.data.length > 0 && (
+          <form onSubmit={onSubmit} noValidate className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="flex flex-col gap-1">
+              <label htmlFor="category_id">Category</label>
+              <select id="category_id" className={field} {...register("category_id")}>
+                {categories.data.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+              {errors.category_id && <p className="text-sm text-red-600">{errors.category_id.message}</p>}
+            </div>
+            <div className="flex flex-col gap-1">
+              <label htmlFor="amount">Amount</label>
+              <input id="amount" inputMode="decimal" placeholder="0.00" className={field} {...register("amount")} />
+              {errors.amount && <p className="text-sm text-red-600">{errors.amount.message}</p>}
+            </div>
+            <div className="flex flex-col gap-1">
+              <label htmlFor="spent_on">Date</label>
+              <input id="spent_on" type="date" className={field} {...register("spent_on")} />
+              {errors.spent_on && <p className="text-sm text-red-600">{errors.spent_on.message}</p>}
+            </div>
+            <div className="flex flex-col gap-1">
+              <label htmlFor="note">Note</label>
+              <input id="note" className={field} {...register("note")} />
+              {errors.note && <p className="text-sm text-red-600">{errors.note.message}</p>}
+            </div>
+            <button type="submit" disabled={isSubmitting} className="rounded bg-black px-4 py-2 text-white disabled:opacity-50 sm:col-span-2">
+              Add expense
+            </button>
+          </form>
+        )}
 
-      {serverError && (
-        <p role="alert" className="text-sm text-red-600">
-          {serverError.message}
-        </p>
-      )}
+        {serverError && (
+          <p role="alert" className="text-sm text-red-600">
+            {serverError.message}
+          </p>
+        )}
 
-      {expenses.isPending && <p>Loading…</p>}
-      {expenses.isError && <p className="text-sm text-red-600">{expenses.error.message}</p>}
-      {expenses.data && (
-        <ul aria-label="Expenses" className="divide-y rounded border">
-          {expenses.data.map((e) => (
-            <li key={e.id} className="flex items-center justify-between gap-4 p-3">
-              <div className="flex flex-col">
-                <span>
-                  <span className="font-medium">{e.category.name}</span>
-                  {e.note && (
-                    <>
-                      <span className="text-gray-400">{" · "}</span>
-                      <span className="text-gray-600">{e.note}</span>
-                    </>
-                  )}
-                </span>
-                <span className="text-sm text-gray-500">{e.spent_on}</span>
-              </div>
-              <div className="flex items-center gap-4">
-                <span className="tabular-nums">{e.amount}</span>
-                <button
-                  type="button"
-                  onClick={() => remove.mutate(e.id)}
-                  disabled={remove.isPending}
-                  aria-label={`Delete expense ${e.id}`}
-                  className="text-sm text-red-600 underline disabled:opacity-50"
-                >
-                  Delete
-                </button>
-              </div>
-            </li>
-          ))}
-          {expenses.data.length === 0 && <li className="p-3 text-sm text-gray-500">No expenses yet.</li>}
-        </ul>
-      )}
-    </section>
+        {expenses.isPending && <p>Loading…</p>}
+        {expenses.isError && <p className="text-sm text-red-600">{expenses.error.message}</p>}
+        {expenses.data && (
+          <ul aria-label="Expenses" className="divide-y rounded border">
+            {expenses.data.map((e) => (
+              <li key={e.id} className="flex items-center justify-between gap-4 p-3">
+                <div className="flex flex-col">
+                  <span>
+                    <span className="font-medium">{e.category.name}</span>
+                    {e.note && (
+                      <>
+                        <span className="text-gray-400">{" · "}</span>
+                        <span className="text-gray-600">{e.note}</span>
+                      </>
+                    )}
+                  </span>
+                  <span className="text-sm text-gray-500">{e.spent_on}</span>
+                </div>
+                <div className="flex items-center gap-4">
+                  <span className="tabular-nums">{e.amount}</span>
+                  <button
+                    type="button"
+                    onClick={() => remove.mutate(e.id)}
+                    disabled={remove.isPending}
+                    aria-label={`Delete expense ${e.id}`}
+                    className="text-sm text-red-600 underline disabled:opacity-50"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </li>
+            ))}
+            {expenses.data.length === 0 && <li className="p-3 text-sm text-gray-500">No expenses yet.</li>}
+          </ul>
+        )}
+      </section>
+    </>
   );
 }
