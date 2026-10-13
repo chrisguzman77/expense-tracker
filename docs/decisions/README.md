@@ -24,5 +24,6 @@ See [record 1](0001-record-architecture-decisions.md) for the format.
 | 16 | [Monitor backups with healthchecks.io](0016-backup-monitoring-with-healthchecks.md) | 2026-10-12 |
 | 17 | [Registration is closed by default](0017-registration-closed-by-default.md) | 2026-10-12 |
 | 18 | [Hand-built UI components on Tailwind](0018-hand-built-ui-components.md) | 2026-10-12 |
+| 19 | [Subscriptions before budgets; Plaid's free plan as the planned aggregator](0019-subscriptions-before-budgets-plaid-trial.md) | 2026-10-13 |
 
 Bugs and surprises found along the way are in [lessons learned](../lessons-learned.md).
