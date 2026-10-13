@@ -17,9 +17,14 @@ export function useMe() {
 
 export type UserLogin = components["schemas"]["UserLogin"];
 
+// The global 401 handler (queryClient.ts) skips this mutation: a wrong password
+// is a 401 that belongs on the login form, not a session that ended.
+export const loginMutationKey = ["login"] as const;
+
 export function useLogin() {
   const queryClient = useQueryClient();
   return useMutation({
+    mutationKey: loginMutationKey,
     mutationFn: (body: UserLogin) => unwrap(api.POST("/api/auth/login", { body })),
     onSuccess: (user) => queryClient.setQueryData(meQueryKey, user),
   });
