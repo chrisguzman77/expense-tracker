@@ -5,6 +5,7 @@ import { CategoriesPage } from "./pages/CategoriesPage";
 import { ExpenseDetailPage } from "./pages/ExpenseDetailPage";
 import { ExpensesPage } from "./pages/ExpensesPage";
 import { LoginPage } from "./pages/LoginPage";
+import { NewCategoryPage } from "./pages/NewCategoryPage";
 import { NewExpensePage } from "./pages/NewExpensePage";
 import { RegisterPage } from "./pages/RegisterPage";
 import { SettingsPage } from "./pages/SettingsPage";
@@ -28,6 +29,7 @@ export const router = createBrowserRouter([
       // Pushed screens: full screen with their own back button.
       { path: "/expenses/new", element: <NewExpensePage /> },
       { path: "/expenses/:id", element: <ExpenseDetailPage /> },
+      { path: "/categories/new", element: <NewCategoryPage /> },
       { path: "/settings", element: <SettingsPage /> },
     ],
   },
