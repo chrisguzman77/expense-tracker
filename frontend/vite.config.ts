@@ -6,5 +6,7 @@ import tailwindcss from "@tailwindcss/vite";
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: { proxy: {"/api": "http://localhost:8010" } },
-  test: { environment: "jsdom", setupFiles: "./src/test/setup.ts"},
+  // css.include: Vitest blanks CSS imports (even ?raw) unless processing is on;
+  // the palette test reads index.css to check every color has both shades.
+  test: { environment: "jsdom", setupFiles: "./src/test/setup.ts", css: { include: [/index\.css/] } },
 });

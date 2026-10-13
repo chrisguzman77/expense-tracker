@@ -49,6 +49,13 @@ and the takeaway. Newest last. Design decisions themselves are in [decisions/](d
   transactions will be negative.
 - *Fix:* handle the sign separately from the digits, with tests for negative values.
 
+**A test read the stylesheet and got an empty string** (found while planning, 2026-10-12)
+- *Cause:* Vitest skips CSS processing by default and replaces every CSS import with an empty
+  string, including `?raw` imports meant to read the file as text.
+- *Fix:* `test.css.include` in the Vite config for `index.css` only.
+- *Takeaway:* when a test reads a file, assert something about its content first, so an empty
+  read fails loudly instead of passing vacuously.
+
 ## Local development
 
 **Ports already taken by other projects** (2026-10-02 and 2026-10-06)
