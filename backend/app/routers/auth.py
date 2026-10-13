@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.orm import Session
 
-from ..auth import COOKIE_NAME, create_token, get_current_user
+from ..auth import COOKIE_NAME, get_current_user, start_session
 from ..config import settings
 from ..database import get_db
 from ..models.user import User
@@ -9,18 +9,6 @@ from ..schemas.user import UserCreate, UserLogin, UserRead
 from ..services import users as user_service
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
-
-
-def set_auth_cookie(response: Response, token: str) -> None:
-    response.set_cookie(
-        key=COOKIE_NAME,
-        value=token,
-        httponly=True,
-        samesite="lax",
-        secure=settings.environment == "production",
-        max_age=settings.jwt_expire_minutes * 60,
-        path="/",
-    )
 
 
 def require_registration_open() -> None:
@@ -40,7 +28,7 @@ def register(body: UserCreate, response: Response, db: Session = Depends(get_db)
         user = user_service.register(db, body.email, body.password)
     except user_service.EmailTaken:
         raise HTTPException(status.HTTP_409_CONFLICT, "Email already registered")
-    set_auth_cookie(response, create_token(user.id))
+    start_session(response, user, remember=False)
     return user
 
 
@@ -49,7 +37,7 @@ def login(body: UserLogin, response: Response, db: Session = Depends(get_db)):
     user = user_service.authenticate(db, body.email, body.password)
     if not user:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid credentials")
-    set_auth_cookie(response, create_token(user.id))
+    start_session(response, user, remember=body.remember)
     return user
 
 

@@ -5,6 +5,7 @@ class Settings(BaseSettings):
     database_url: str
     jwt_secret: str
     jwt_expire_minutes: int = 60
+    remember_days: int = 30
     environment: str = "development"
     allow_registration: bool = False
 
