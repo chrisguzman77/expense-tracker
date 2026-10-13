@@ -8,13 +8,18 @@ import { Button } from "../components/Button";
 import { Field } from "../components/Field";
 import { inputClass } from "../components/styles";
 
-// Mirrors the backend UserCreate schema: password 8..120 characters.
+// Mirrors the backend UserCreate schema: at least 8 characters, at most 72 bytes
+// (bcrypt's limit; emoji and accented letters take more than one byte each).
+const encoder = new TextEncoder();
 const schema = z.object({
   email: z.email("Enter a valid email"),
   password: z
     .string()
     .min(8, "Password must be at least 8 characters")
-    .max(120, "Password must be at most 120 characters"),
+    .refine(
+      (value) => encoder.encode(value).length <= 72,
+      "Password is too long: 72 bytes max (emoji and accented letters count as more than one)",
+    ),
 });
 type FormValues = z.infer<typeof schema>;
 
