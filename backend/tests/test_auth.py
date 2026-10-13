@@ -78,11 +78,14 @@ def test_register_counts_bytes_not_characters(client):
         "/api/auth/register", json={"email": "a@b.com", "password": password}
     )
     assert r.status_code == 422
+    assert "72 bytes max" in r.text
 
 
 def test_login_with_an_over_long_password_is_401(client):
-    client.post(
+    # The account must exist, or login would 401 before reaching the length check.
+    r = client.post(
         "/api/auth/register", json={"email": "a@b.com", "password": "hunter22!"}
     )
+    assert r.status_code == 201
     r = client.post("/api/auth/login", json={"email": "a@b.com", "password": "a" * 100})
     assert r.status_code == 401
