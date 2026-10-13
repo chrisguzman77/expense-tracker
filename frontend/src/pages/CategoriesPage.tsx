@@ -22,7 +22,8 @@ export function CategoriesPage() {
 
   const onSubmit = handleSubmit(async (values) => {
     try {
-      await create.mutateAsync(values);
+      // Explicit defaults until the redesigned form adds a color/emoji picker.
+      await create.mutateAsync({ ...values, color: "slate", icon: "🏷️" });
       reset();
     } catch {
       // Shown below via create.error

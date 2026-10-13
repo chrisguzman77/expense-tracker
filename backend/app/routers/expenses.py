@@ -26,7 +26,7 @@ def create_category(
     db: Session = Depends(get_db),
 ):
     try:
-        return svc.create_category(db, user.id, body.name)
+        return svc.create_category(db, user.id, body.name, body.color, body.icon)
     except svc.NameTaken:
         raise HTTPException(status.HTTP_409_CONFLICT, "Category name taken")
 
