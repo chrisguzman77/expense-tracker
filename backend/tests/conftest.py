@@ -29,7 +29,9 @@ def registration_open(monkeypatch):
 def db():
     conn = engine.connect()
     tx = conn.begin()
-    session = TestingSession(bind=conn)
+    # Service commits/rollbacks become savepoints, so a rolled-back IntegrityError
+    # doesn't discard the test's earlier data.
+    session = TestingSession(bind=conn, join_transaction_mode="create_savepoint")
     yield session
     session.close()
     tx.rollback()
