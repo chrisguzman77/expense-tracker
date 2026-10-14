@@ -1,10 +1,13 @@
 import { createBrowserRouter } from "react-router-dom";
 import { AppLayout } from "./auth/AppLayout";
 import { RequireAuth } from "./auth/RequireAuth";
+import { AccountDetailPage } from "./pages/AccountDetailPage";
+import { AccountsPage } from "./pages/AccountsPage";
 import { CategoriesPage } from "./pages/CategoriesPage";
 import { ExpenseDetailPage } from "./pages/ExpenseDetailPage";
 import { ExpensesPage } from "./pages/ExpensesPage";
 import { LoginPage } from "./pages/LoginPage";
+import { NewAccountPage } from "./pages/NewAccountPage";
 import { NewCategoryPage } from "./pages/NewCategoryPage";
 import { NewExpensePage } from "./pages/NewExpensePage";
 import { RegisterPage } from "./pages/RegisterPage";
@@ -24,12 +27,15 @@ export const router = createBrowserRouter([
           { path: "/", element: <ExpensesPage /> },
           { path: "/categories", element: <CategoriesPage /> },
           { path: "/summary", element: <SummaryPage /> },
+          { path: "/accounts", element: <AccountsPage /> },
         ],
       },
       // Pushed screens: full screen with their own back button.
       { path: "/expenses/new", element: <NewExpensePage /> },
       { path: "/expenses/:id", element: <ExpenseDetailPage /> },
       { path: "/categories/new", element: <NewCategoryPage /> },
+      { path: "/accounts/new", element: <NewAccountPage /> },
+      { path: "/accounts/:id", element: <AccountDetailPage /> },
       { path: "/settings", element: <SettingsPage /> },
     ],
   },

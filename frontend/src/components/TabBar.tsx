@@ -1,10 +1,11 @@
 import { NavLink } from "react-router-dom";
-import { GridIcon, ListIcon, PieIcon } from "./icons";
+import { GridIcon, ListIcon, PieIcon, WalletIcon } from "./icons";
 
 const TABS = [
   { to: "/", label: "Expenses", Icon: ListIcon, end: true },
   { to: "/summary", label: "Summary", Icon: PieIcon, end: false },
   { to: "/categories", label: "Categories", Icon: GridIcon, end: false },
+  { to: "/accounts", label: "Accounts", Icon: WalletIcon, end: false },
 ];
 
 // Bottom bar on phones; on wide screens the same tabs sit in the gradient header.
@@ -35,7 +36,7 @@ export function TabBar({ placement }: { placement: "bottom" | "top" }) {
       aria-label="Tab bar"
       className="fixed inset-x-0 bottom-0 z-10 border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] md:hidden"
     >
-      <div className="grid grid-cols-3">
+      <div className="grid grid-cols-4">
         {TABS.map(({ to, label, Icon, end }) => (
           <NavLink
             key={to}

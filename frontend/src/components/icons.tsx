@@ -80,3 +80,12 @@ export function TrashIcon({ className }: IconProps) {
     </svg>
   );
 }
+
+export function WalletIcon({ className }: IconProps) {
+  return (
+    <svg {...svgProps} className={className}>
+      <rect x="2" y="6" width="20" height="14" rx="2" />
+      <path d="M2 10h20M16 15h2" />
+    </svg>
+  );
+}
