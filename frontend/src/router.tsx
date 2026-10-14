@@ -4,8 +4,6 @@ import { RequireAuth } from "./auth/RequireAuth";
 import { AccountDetailPage } from "./pages/AccountDetailPage";
 import { AccountsPage } from "./pages/AccountsPage";
 import { CategoriesPage } from "./pages/CategoriesPage";
-import { TransactionDetailPage } from "./pages/TransactionDetailPage";
-import { TransactionsPage } from "./pages/TransactionsPage";
 import { LoginPage } from "./pages/LoginPage";
 import { NewAccountPage } from "./pages/NewAccountPage";
 import { NewCategoryPage } from "./pages/NewCategoryPage";
@@ -13,6 +11,8 @@ import { NewTransactionPage } from "./pages/NewTransactionPage";
 import { RegisterPage } from "./pages/RegisterPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { SummaryPage } from "./pages/SummaryPage";
+import { TransactionDetailPage } from "./pages/TransactionDetailPage";
+import { TransactionsPage } from "./pages/TransactionsPage";
 
 export const router = createBrowserRouter([
   { path: "/login", element: <LoginPage /> },

@@ -65,10 +65,10 @@ def add_user(conn, email):
     ).scalar_one()
 
 
-def seed_expenses(engine):
+def seed_expenses(engine, email="a@b.com"):
     """One user with a category and two expenses; returns the user's id."""
     with engine.begin() as conn:
-        user = add_user(conn, "a@b.com")
+        user = add_user(conn, email)
         food = conn.execute(
             text(
                 "INSERT INTO categories (user_id, name) VALUES (:u, 'Food') RETURNING id"
@@ -192,3 +192,42 @@ def test_reshape_creates_no_account_for_users_without_expenses(migration_db):
     migrate(command.upgrade, RESHAPE)
 
     assert rows(migration_db, "SELECT id FROM accounts") == []
+
+
+def test_reshape_keeps_each_users_expenses_in_their_own_cash_account(migration_db):
+    migrate(command.upgrade, BEFORE_RESHAPE)
+    first = seed_expenses(migration_db, "a@b.com")
+    second = seed_expenses(migration_db, "c@d.com")
+    with migration_db.begin() as conn:
+        # A decoy a sloppy join could pick up instead of the user's Cash account.
+        conn.execute(
+            text(
+                "INSERT INTO accounts (user_id, name, type) "
+                "VALUES (:u, 'Card', 'credit_card')"
+            ),
+            {"u": second},
+        )
+
+    migrate(command.upgrade, RESHAPE)
+
+    cash = {
+        a.user_id: a.id
+        for a in rows(
+            migration_db, "SELECT id, user_id FROM accounts WHERE name = 'Cash'"
+        )
+    }
+    assert set(cash) == {first, second}
+    assert rows(
+        migration_db,
+        "SELECT count(*) FROM transactions t JOIN accounts a ON a.id = t.account_id "
+        "WHERE a.user_id <> t.user_id",
+    ) == [(0,)]
+    for user, account in cash.items():
+        assert {
+            t.account_id
+            for t in rows(
+                migration_db,
+                "SELECT account_id FROM transactions WHERE user_id = :u",
+                u=user,
+            )
+        } == {account}
