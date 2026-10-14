@@ -348,5 +348,9 @@ caught along the way:
   built, and that the commands I'll run for the coverage check passed the secret key on
   curl's command line, where other programs can briefly see it. The key now goes in through
   standard input.
+- The second review pointed out that the account screen's Edit and Delete buttons sit below
+  its whole transaction list. With a few hand-entered rows that's fine, but once a bank
+  account brings two years of history they'd be hundreds of rows down, so they're worth
+  moving up before connecting accounts.
 
 **Next:** run the coverage check against Plaid's sandbox; then connecting accounts (3b).
