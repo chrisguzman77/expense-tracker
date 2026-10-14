@@ -29,6 +29,8 @@ class Category(Base):
     # Server defaults fill existing rows when the migration adds the columns.
     color: Mapped[str] = mapped_column(String(20), server_default="slate")
     icon: Mapped[str] = mapped_column(String(16), server_default="🏷️")
+    # spending, income or transfer; only spending counts in the summary.
+    kind: Mapped[str] = mapped_column(String(20), server_default="spending")
 
 
 class Transaction(Base):

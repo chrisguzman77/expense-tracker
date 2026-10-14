@@ -55,7 +55,13 @@ def test_transaction_includes_its_category_and_account(client):
         "amount": "-12.50",
         "occurred_on": "2026-08-30",
         "note": "Lunch",
-        "category": {"id": food, "name": "Food", "color": "slate", "icon": "🏷️"},
+        "category": {
+            "id": food,
+            "name": "Food",
+            "color": "slate",
+            "icon": "🏷️",
+            "kind": "spending",
+        },
         "account": {"id": account, "name": "Wallet", "type": "cash"},
     }
     assert client.get("/api/transactions").json() == [txn]
@@ -173,7 +179,13 @@ def test_category_color_and_icon_round_trip(client):
     )
     assert r.status_code == 201, r.text
     cat = r.json()
-    assert cat == {"id": cat["id"], "name": "Food", "color": "amber", "icon": "🍔"}
+    assert cat == {
+        "id": cat["id"],
+        "name": "Food",
+        "color": "amber",
+        "icon": "🍔",
+        "kind": "spending",
+    }
     assert client.get("/api/categories").json() == [cat]
 
     txn = add(client, make_account(client), cat["id"], "-3.00").json()
@@ -184,6 +196,7 @@ def test_category_color_and_icon_default_when_omitted(client):
     signup(client, "a@b.com")
     cat = client.post("/api/categories", json={"name": "Food"}).json()
     assert cat["color"] == "slate"
+    assert cat["kind"] == "spending"
     assert cat["icon"] == "🏷️"
 
 
@@ -196,7 +209,7 @@ def test_category_accepts_multi_codepoint_emoji(client):
 
 @pytest.mark.parametrize(
     "extra",
-    [{"color": "chartreuse"}, {"icon": ""}, {"icon": "x" * 17}],
+    [{"color": "chartreuse"}, {"icon": ""}, {"icon": "x" * 17}, {"kind": "savings"}],
 )
 def test_category_rejects_bad_color_or_icon(client, extra):
     signup(client, "a@b.com")
@@ -244,3 +257,38 @@ def test_deleting_a_user_removes_their_accounts_categories_and_transactions(clie
 
     for model in (Account, Category, Transaction):
         assert db.scalar(select(func.count()).select_from(model)) == 0
+
+
+def test_category_kind_round_trip(client):
+    signup(client, "a@b.com")
+    r = client.post("/api/categories", json={"name": "Paycheck", "kind": "income"})
+    assert r.status_code == 201, r.text
+    assert r.json()["kind"] == "income"
+    assert client.get("/api/categories").json()[0]["kind"] == "income"
+
+
+def test_summary_counts_only_spending_categories(client):
+    signup(client, "a@b.com")
+    account = make_account(client)
+    food = make_category(client, "Food")
+    paycheck = make_category(client, "Paycheck", kind="income")
+    card_payment = make_category(client, "Card payment", kind="transfer")
+    add(client, account, food, "-10.00", on="2026-08-03")
+    add(client, account, paycheck, "2000.00", on="2026-08-01")
+    add(client, account, card_payment, "-500.00", on="2026-08-05")
+    assert totals(client) == {"Food": "10.00"}
+
+
+def test_summary_orders_by_total_then_name(client):
+    signup(client, "a@b.com")
+    account = make_account(client)
+    gas = make_category(client, "Gas")
+    food = make_category(client, "Food")
+    clothes = make_category(client, "Clothes")
+    make_category(client, "Travel")  # unused: total 0
+    make_category(client, "Books")  # unused: total 0, sorts before Travel by name
+    add(client, account, gas, "-40.00", on="2026-08-02")
+    add(client, account, food, "-10.00", on="2026-08-03")
+    add(client, account, clothes, "20.00", on="2026-08-04")
+    names = [r["name"] for r in client.get("/api/summary?year=2026&month=8").json()]
+    assert names == ["Gas", "Food", "Books", "Travel", "Clothes"]

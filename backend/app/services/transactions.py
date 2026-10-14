@@ -27,9 +27,9 @@ def list_categories(db: Session, user_id: int) -> list[Category]:
 
 
 def create_category(
-    db: Session, user_id: int, name: str, color: str, icon: str
+    db: Session, user_id: int, name: str, color: str, icon: str, kind: str
 ) -> Category:
-    cat = Category(user_id=user_id, name=name, color=color, icon=icon)
+    cat = Category(user_id=user_id, name=name, color=color, icon=icon, kind=kind)
     db.add(cat)
     try:
         db.commit()
@@ -123,9 +123,9 @@ def summary_by_category(db: Session, user_id: int, year: int, month: int):
             & (Transaction.occurred_on < end),
             isouter=True,
         )
-        .where(Category.user_id == user_id)
+        .where(Category.user_id == user_id, Category.kind == "spending")
         .group_by(Category.id)
-        .order_by(spent.desc().nulls_last())
+        .order_by(func.coalesce(spent, 0).desc(), Category.name)
     )
     return [
         {"category_id": r[0], "name": r[1], "color": r[2], "icon": r[3], "total": r[4]}
