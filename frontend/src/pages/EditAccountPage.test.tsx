@@ -90,5 +90,6 @@ describe("EditAccountPage", () => {
     renderPage("/accounts/99/edit");
 
     expect(await screen.findByText("Account not found")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Back" })).toHaveAttribute("href", "/accounts");
   });
 });

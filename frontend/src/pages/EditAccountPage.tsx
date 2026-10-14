@@ -12,7 +12,7 @@ export function EditAccountPage() {
   const account = accounts.data?.find((a) => a.id === Number(id));
 
   return (
-    <Screen title="Edit account" backTo={`/accounts/${id}`}>
+    <Screen title="Edit account" backTo={account ? `/accounts/${account.id}` : "/accounts"}>
       {accounts.isPending && <p className="text-muted">Loading…</p>}
       {accounts.isError && (
         <p role="alert" className="text-sm text-danger">

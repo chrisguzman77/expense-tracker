@@ -54,7 +54,7 @@ export function EditTransactionPage() {
   }
 
   return (
-    <Screen title="Edit transaction" backTo={`/transactions/${id}`}>
+    <Screen title="Edit transaction" backTo={transaction ? `/transactions/${transaction.id}` : "/"}>
       {content}
     </Screen>
   );
