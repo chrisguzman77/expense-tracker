@@ -3,7 +3,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import type { Account } from "../api/accounts";
 import type { Category } from "../api/categories";
-import { useCreateTransaction } from "../api/transactions";
+import { useCreateTransaction, useUpdateTransaction } from "../api/transactions";
 import { Button } from "../components/Button";
 import { Field } from "../components/Field";
 import { Segmented } from "../components/Segmented";
@@ -45,14 +45,18 @@ type Props = {
   accounts: Account[];
   categories: Category[];
   defaultValues: TransactionFormValues;
+  // Set when editing: the form saves with PUT instead of POST.
+  transactionId?: number;
   onSaved: () => void;
   // Create only: opens the new-category screen with what's typed so far.
   onNewCategory?: (draft: TransactionDraft) => void;
 };
 
-export function TransactionForm({ accounts, categories, defaultValues, onSaved, onNewCategory }: Props) {
+export function TransactionForm({ accounts, categories, defaultValues, transactionId, onSaved, onNewCategory }: Props) {
   const groups = groupCategories(categories);
   const create = useCreateTransaction();
+  const update = useUpdateTransaction();
+  const save = transactionId === undefined ? create : update;
   const {
     register,
     handleSubmit,
@@ -61,17 +65,19 @@ export function TransactionForm({ accounts, categories, defaultValues, onSaved, 
   } = useForm<TransactionFormValues>({ resolver: zodResolver(schema), defaultValues });
 
   const onSubmit = handleSubmit(async (values) => {
+    const body = {
+      account_id: Number(values.account_id),
+      category_id: Number(values.category_id),
+      amount: values.direction === "out" ? `-${values.amount}` : values.amount,
+      occurred_on: values.occurred_on,
+      note: values.note || null,
+    };
     try {
-      await create.mutateAsync({
-        account_id: Number(values.account_id),
-        category_id: Number(values.category_id),
-        amount: values.direction === "out" ? `-${values.amount}` : values.amount,
-        occurred_on: values.occurred_on,
-        note: values.note || null,
-      });
+      if (transactionId === undefined) await create.mutateAsync(body);
+      else await update.mutateAsync({ id: transactionId, body });
       onSaved();
     } catch {
-      // Shown below via create.error
+      // Shown below via save.error
     }
   });
 
@@ -121,13 +127,13 @@ export function TransactionForm({ accounts, categories, defaultValues, onSaved, 
       <Field label="Note" htmlFor="note" error={errors.note?.message}>
         <input id="note" placeholder="Optional" className={inputClass} {...register("note")} />
       </Field>
-      {create.isError && (
+      {save.error && (
         <p role="alert" className="text-sm text-danger">
-          {create.error.message}
+          {save.error.message}
         </p>
       )}
       <Button type="submit" disabled={isSubmitting} className="mt-2 w-full">
-        Add transaction
+        {transactionId === undefined ? "Add transaction" : "Save"}
       </Button>
     </form>
   );

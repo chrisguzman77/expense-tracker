@@ -28,6 +28,7 @@ function renderPage(path: string) {
     [
       { path: "/", element: <p>transactions list</p> },
       { path: "/transactions/:id", element: <TransactionDetailPage /> },
+      { path: "/transactions/:id/edit", element: <p>edit screen</p> },
     ],
     { initialEntries: [path] },
   );
@@ -84,5 +85,14 @@ describe("TransactionDetailPage", () => {
     renderPage("/transactions/999");
 
     expect(await screen.findByText("Transaction not found")).toBeInTheDocument();
+  });
+
+  it("opens the edit screen", async () => {
+    fakeApi();
+    renderPage("/transactions/10");
+
+    await userEvent.setup().click(await screen.findByRole("button", { name: "Edit transaction" }));
+
+    expect(await screen.findByText("edit screen")).toBeInTheDocument();
   });
 });

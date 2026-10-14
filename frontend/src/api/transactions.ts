@@ -43,3 +43,12 @@ export function useDeleteTransaction() {
     onSuccess: () => invalidateTransactionData(queryClient),
   });
 }
+
+export function useUpdateTransaction() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, body }: { id: number; body: TransactionCreate }) =>
+      unwrap(api.PUT("/api/transactions/{transaction_id}", { params: { path: { transaction_id: id } }, body })),
+    onSuccess: () => invalidateTransactionData(queryClient),
+  });
+}

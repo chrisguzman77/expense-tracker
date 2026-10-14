@@ -52,6 +52,9 @@ export function TransactionDetailPage() {
               <dd className="break-words">{transaction.note || "—"}</dd>
             </dl>
           </Card>
+          <Button variant="secondary" onClick={() => navigate(`/transactions/${transaction.id}/edit`)} className="w-full">
+            Edit transaction
+          </Button>
           {remove.isError && (
             <p role="alert" className="text-sm text-danger">
               {remove.error.message}
