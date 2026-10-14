@@ -4,7 +4,8 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
-from ..models.expense import Category, Expense
+from ..models.transaction import Category, Transaction
+from . import accounts
 
 
 class NotFound(Exception): ...
@@ -48,69 +49,83 @@ def _owned_category(db: Session, user_id: int, category_id: int) -> Category:
 
 def delete_category(db: Session, user_id: int, category_id: int) -> None:
     cat = _owned_category(db, user_id, category_id)
-    in_use = db.scalar(select(func.count()).where(Expense.category_id == cat.id))
+    in_use = db.scalar(select(func.count()).where(Transaction.category_id == cat.id))
     if in_use:
         raise CategoryInUse()
     db.delete(cat)
     db.commit()
 
 
-# expenses
-def list_expenses(
-    db: Session, user_id: int, start: date | None, end: date | None
-) -> list[Expense]:
+# transactions
+def list_transactions(
+    db: Session,
+    user_id: int,
+    start: date | None,
+    end: date | None,
+    account_id: int | None,
+) -> list[Transaction]:
     q = (
-        select(Expense)
-        .where(Expense.user_id == user_id)
-        .options(selectinload(Expense.category))
+        select(Transaction)
+        .where(Transaction.user_id == user_id)
+        .options(selectinload(Transaction.category), selectinload(Transaction.account))
     )
+    if account_id is not None:
+        # Raises accounts.NotFound for someone else's account, rather than
+        # answering with an empty list that hides a wrong id.
+        accounts.get_owned_account(db, user_id, account_id)
+        q = q.where(Transaction.account_id == account_id)
     if start:
-        q = q.where(Expense.spent_on >= start)
+        q = q.where(Transaction.occurred_on >= start)
     if end:
-        q = q.where(Expense.spent_on <= end)
-    return list(db.scalars(q.order_by(Expense.spent_on.desc(), Expense.id.desc())))
+        q = q.where(Transaction.occurred_on <= end)
+    return list(
+        db.scalars(q.order_by(Transaction.occurred_on.desc(), Transaction.id.desc()))
+    )
 
 
-def create_expense(db: Session, user_id: int, data) -> Expense:
+def create_transaction(db: Session, user_id: int, data) -> Transaction:
+    accounts.get_owned_account(db, user_id, data.account_id)
     _owned_category(db, user_id, data.category_id)
-    exp = Expense(user_id=user_id, **data.model_dump())
-    db.add(exp)
+    txn = Transaction(user_id=user_id, **data.model_dump())
+    db.add(txn)
     db.commit()
-    db.refresh(exp)
-    return exp
+    db.refresh(txn)
+    return txn
 
 
-def delete_expense(db: Session, user_id: int, expense_id: int) -> None:
-    exp = db.get(Expense, expense_id)
-    if exp is None or exp.user_id != user_id:
+def delete_transaction(db: Session, user_id: int, transaction_id: int) -> None:
+    txn = db.get(Transaction, transaction_id)
+    if txn is None or txn.user_id != user_id:
         raise NotFound()
-    db.delete(exp)
+    db.delete(txn)
     db.commit()
 
 
 def summary_by_category(db: Session, user_id: int, year: int, month: int):
     start = date(year, month, 1)
     end = date(year + (month == 12), (month % 12) + 1, 1)
+    # Money out is negative, so spending is minus the sum: refunds reduce it.
+    spent = -func.sum(Transaction.amount)
     q = (
         select(
             Category.id,
             Category.name,
             Category.color,
             Category.icon,
-            func.coalesce(func.sum(Expense.amount), 0).label("total"),
+            func.coalesce(spent, 0).label("total"),
         )
-        # Date range lives in the ON clause so categories with no expenses
+        # Date range lives in the ON clause so categories with no transactions
         # this month survive the outer join (a WHERE filter would drop them).
         .join(
-            Expense,
-            (Expense.category_id == Category.id)
-            & (Expense.spent_on >= start)
-            & (Expense.spent_on < end),
+            Transaction,
+            (Transaction.category_id == Category.id)
+            & (Transaction.occurred_on >= start)
+            & (Transaction.occurred_on < end),
             isouter=True,
         )
         .where(Category.user_id == user_id)
         .group_by(Category.id)
-        .order_by(func.sum(Expense.amount).desc().nulls_last())
+        .order_by(spent.desc().nulls_last())
     )
     return [
         {"category_id": r[0], "name": r[1], "color": r[2], "icon": r[3], "total": r[4]}

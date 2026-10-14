@@ -86,3 +86,25 @@ def test_delete_missing_account_is_404(client):
 
 def test_accounts_require_login(client):
     assert client.get("/api/accounts").status_code == 401
+
+
+def test_deleting_an_account_with_transactions_is_409(client):
+    signup(client, "a@b.com")
+    account = client.post(
+        "/api/accounts", json={"name": "Wallet", "type": "cash"}
+    ).json()
+    food = client.post("/api/categories", json={"name": "Food"}).json()
+    r = client.post(
+        "/api/transactions",
+        json={
+            "account_id": account["id"],
+            "category_id": food["id"],
+            "amount": "-1.00",
+            "occurred_on": "2026-08-30",
+        },
+    )
+    assert r.status_code == 201, r.text
+
+    r = client.delete(f"/api/accounts/{account['id']}")
+    assert r.status_code == 409
+    assert r.json() == {"detail": "Account has transactions"}

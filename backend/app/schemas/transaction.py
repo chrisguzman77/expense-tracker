@@ -4,6 +4,8 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from .account import AccountRead
+
 # Must match the frontend palette (frontend/src/lib/palette.ts). Validated here
 # only, not with a database CHECK, so adding a color is a code change.
 CategoryColor = Literal[
@@ -36,27 +38,37 @@ class CategoryRead(BaseModel):
     icon: str
 
 
-class ExpenseCreate(BaseModel):
+class TransactionCreate(BaseModel):
+    account_id: int
     category_id: int
-    amount: Decimal = Field(gt=0, max_digits=12, decimal_places=2)
-    spent_on: date
+    # Signed: negative is money out, positive is money in.
+    amount: Decimal = Field(max_digits=12, decimal_places=2)
+    occurred_on: date
     note: str | None = Field(default=None, max_length=255)
 
-    @field_validator("spent_on")
+    @field_validator("amount")
+    @classmethod
+    def not_zero(cls, v: Decimal) -> Decimal:
+        if v == 0:
+            raise ValueError("amount cannot be zero")
+        return v
+
+    @field_validator("occurred_on")
     @classmethod
     def not_in_future(cls, v: date) -> date:
         if v > datetime.now(UTC).date() + timedelta(days=1):
-            raise ValueError("spent_on cannot be in the fiuture")
+            raise ValueError("occurred_on cannot be in the future")
         return v
 
 
-class ExpenseRead(BaseModel):
+class TransactionRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: int
     amount: Decimal
-    spent_on: date
+    occurred_on: date
     note: str | None
     category: CategoryRead
+    account: AccountRead
 
 
 class CategorySummary(BaseModel):
