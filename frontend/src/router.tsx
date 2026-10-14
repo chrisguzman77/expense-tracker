@@ -4,6 +4,9 @@ import { RequireAuth } from "./auth/RequireAuth";
 import { AccountDetailPage } from "./pages/AccountDetailPage";
 import { AccountsPage } from "./pages/AccountsPage";
 import { CategoriesPage } from "./pages/CategoriesPage";
+import { EditAccountPage } from "./pages/EditAccountPage";
+import { EditCategoryPage } from "./pages/EditCategoryPage";
+import { EditTransactionPage } from "./pages/EditTransactionPage";
 import { LoginPage } from "./pages/LoginPage";
 import { NewAccountPage } from "./pages/NewAccountPage";
 import { NewCategoryPage } from "./pages/NewCategoryPage";
@@ -33,9 +36,12 @@ export const router = createBrowserRouter([
       // Pushed screens: full screen with their own back button.
       { path: "/transactions/new", element: <NewTransactionPage /> },
       { path: "/transactions/:id", element: <TransactionDetailPage /> },
+      { path: "/transactions/:id/edit", element: <EditTransactionPage /> },
       { path: "/categories/new", element: <NewCategoryPage /> },
+      { path: "/categories/:id/edit", element: <EditCategoryPage /> },
       { path: "/accounts/new", element: <NewAccountPage /> },
       { path: "/accounts/:id", element: <AccountDetailPage /> },
+      { path: "/accounts/:id/edit", element: <EditAccountPage /> },
       { path: "/settings", element: <SettingsPage /> },
     ],
   },

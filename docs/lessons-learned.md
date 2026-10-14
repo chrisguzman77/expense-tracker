@@ -108,6 +108,18 @@ and the takeaway. Newest last. Design decisions themselves are in [decisions/](d
 - *Takeaway:* "the existing frontend keeps working" holds at runtime but not at compile time
   when a field with a default is added; plan for the frontend to send it.
 
+**The plan put a helper in a component file** (piece 3a, 2026-10-14)
+- *What happened:* the plan exported `groupCategories` from the new `TransactionForm.tsx`.
+  ESLint's `react-refresh/only-export-components` rejected it, and the implementation switched
+  the rule off for that line.
+- *Why the rule exists:* hot reload can only swap a module in place when it exports nothing
+  but components; a plain function export forces a full reload.
+- *Fix:* helpers live in `src/lib/` (or stay private to their one user), and component files
+  export only components and types. The plan was updated before the next task, which would
+  have needed a second exception.
+- *Takeaway:* a lint suppression is a design question. Ask why the rule fires before
+  silencing it.
+
 ## Local development
 
 **Ports already taken by other projects** (2026-10-02 and 2026-10-06)
@@ -240,6 +252,16 @@ and the takeaway. Newest last. Design decisions themselves are in [decisions/](d
   an account and a signed transaction.
 - *Takeaway:* a rename is a search over the whole repository, not just the app. And the drill's
   end-to-end test paid for itself: it is the only check that knows the schema from the outside.
+
+**The restore drill failed right after a deploy** (2a rollout, 2026-10-14)
+- *What happened:* a manual drill straight after the release reported "table missing from
+  restore: accounts".
+- *Cause:* the drill restores the newest snapshot, which was the backup taken just before the
+  deploy, before the migration created `accounts`. The drill, already updated, checks for the
+  current tables. The backup itself was fine.
+- *Fix:* run `backup-now` again, then the drill. It passed. The runbook says so now.
+- *Why the monthly drill is safe:* it runs at 05:00 on the 1st, two hours after the nightly
+  backup. Only a release with a migration deployed between those two times would trip it.
 
 ## Going live
 

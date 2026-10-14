@@ -5,6 +5,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
 from ..models.transaction import Category, Transaction
+from ..schemas.transaction import TransactionCreate
 from . import accounts
 
 
@@ -15,6 +16,9 @@ class CategoryInUse(Exception): ...
 
 
 class NameTaken(Exception): ...
+
+
+class TransactionNotFound(Exception): ...
 
 
 # categories
@@ -44,6 +48,26 @@ def _owned_category(db: Session, user_id: int, category_id: int) -> Category:
     cat = db.get(Category, category_id)
     if cat is None or cat.user_id != user_id:
         raise NotFound()
+    return cat
+
+
+def update_category(
+    db: Session,
+    user_id: int,
+    category_id: int,
+    name: str,
+    color: str,
+    icon: str,
+    kind: str,
+) -> Category:
+    cat = _owned_category(db, user_id, category_id)
+    cat.name, cat.color, cat.icon, cat.kind = name, color, icon, kind
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise NameTaken()
+    db.refresh(cat)
     return cat
 
 
@@ -83,7 +107,9 @@ def list_transactions(
     )
 
 
-def create_transaction(db: Session, user_id: int, data) -> Transaction:
+def create_transaction(
+    db: Session, user_id: int, data: TransactionCreate
+) -> Transaction:
     accounts.get_owned_account(db, user_id, data.account_id)
     _owned_category(db, user_id, data.category_id)
     txn = Transaction(user_id=user_id, **data.model_dump())
@@ -93,10 +119,28 @@ def create_transaction(db: Session, user_id: int, data) -> Transaction:
     return txn
 
 
-def delete_transaction(db: Session, user_id: int, transaction_id: int) -> None:
+def _owned_transaction(db: Session, user_id: int, transaction_id: int) -> Transaction:
     txn = db.get(Transaction, transaction_id)
     if txn is None or txn.user_id != user_id:
-        raise NotFound()
+        raise TransactionNotFound()
+    return txn
+
+
+def update_transaction(
+    db: Session, user_id: int, transaction_id: int, data: TransactionCreate
+) -> Transaction:
+    txn = _owned_transaction(db, user_id, transaction_id)
+    accounts.get_owned_account(db, user_id, data.account_id)
+    _owned_category(db, user_id, data.category_id)
+    for field, value in data.model_dump().items():
+        setattr(txn, field, value)
+    db.commit()
+    db.refresh(txn)
+    return txn
+
+
+def delete_transaction(db: Session, user_id: int, transaction_id: int) -> None:
+    txn = _owned_transaction(db, user_id, transaction_id)
     db.delete(txn)
     db.commit()
 

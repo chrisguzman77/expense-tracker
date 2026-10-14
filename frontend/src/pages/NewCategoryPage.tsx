@@ -2,7 +2,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { Card } from "../components/Card";
 import { Screen } from "../components/Screen";
 import { CategoryForm } from "./CategoryForm";
-import type { TransactionDraft } from "./NewTransactionPage";
+import type { TransactionDraft } from "./TransactionForm";
 
 type LocationState = { draft?: TransactionDraft } | null;
 
@@ -22,7 +22,7 @@ export function NewCategoryPage() {
     >
       <Card className="p-4">
         <CategoryForm
-          onCreated={(category) =>
+          onSaved={(category) =>
             fromTransaction
               ? navigate("/transactions/new", { replace: true, state: { draft, categoryId: category.id } })
               : navigate("/categories", { replace: true })

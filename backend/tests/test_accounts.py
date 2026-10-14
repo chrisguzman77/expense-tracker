@@ -108,3 +108,62 @@ def test_deleting_an_account_with_transactions_is_409(client):
     r = client.delete(f"/api/accounts/{account['id']}")
     assert r.status_code == 409
     assert r.json() == {"detail": "Account has transactions"}
+
+
+def test_edit_account_name_and_type(client):
+    signup(client, "a@b.com")
+    account = client.post(
+        "/api/accounts", json={"name": "TOTAL CHECKING 1234", "type": "savings"}
+    ).json()
+
+    r = client.put(
+        f"/api/accounts/{account['id']}",
+        json={"name": "Chase checking", "type": "checking"},
+    )
+
+    assert r.status_code == 200, r.text
+    edited = r.json()
+    assert edited == {"id": account["id"], "name": "Chase checking", "type": "checking"}
+    assert client.get("/api/accounts").json() == [edited]
+
+
+def test_account_can_be_saved_under_its_own_name(client):
+    signup(client, "a@b.com")
+    account = client.post(
+        "/api/accounts", json={"name": "Wallet", "type": "cash"}
+    ).json()
+    r = client.put(
+        f"/api/accounts/{account['id']}", json={"name": "Wallet", "type": "checking"}
+    )
+    assert r.status_code == 200, r.text
+
+
+def test_renaming_an_account_to_a_taken_name_is_409(client):
+    signup(client, "a@b.com")
+    client.post("/api/accounts", json={"name": "Wallet", "type": "cash"})
+    card = client.post(
+        "/api/accounts", json={"name": "Card", "type": "credit_card"}
+    ).json()
+
+    r = client.put(
+        f"/api/accounts/{card['id']}", json={"name": "Wallet", "type": "credit_card"}
+    )
+
+    assert r.status_code == 409
+    assert r.json() == {"detail": "Account name taken"}
+    assert [a["name"] for a in client.get("/api/accounts").json()] == ["Card", "Wallet"]
+
+
+def test_cannot_edit_another_users_account(client):
+    signup(client, "a@b.com")
+    account = client.post(
+        "/api/accounts", json={"name": "Wallet", "type": "cash"}
+    ).json()
+    client.post("/api/auth/logout")
+
+    signup(client, "c@d.com")
+    r = client.put(
+        f"/api/accounts/{account['id']}", json={"name": "Mine", "type": "cash"}
+    )
+    assert r.status_code == 404
+    assert r.json() == {"detail": "Account not found"}

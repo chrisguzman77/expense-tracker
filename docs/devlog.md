@@ -291,3 +291,66 @@ agents. Things caught along the way:
 
 **Next:** land 2a (backup first: three migrations), reload the home-screen app, create my real
 accounts; then CSV import.
+
+## 2026-10-14 — Rolling out accounts
+
+Landed 2a in `main` (#38), took a backup (three migrations), then deployed. The rollout steps
+Claude gave me started with `git pull`, which failed with "not a git repository": the server's
+folder holds only `compose.yaml` and `.env`, and the images carry the code. The runbook already had it right
+(`docker compose pull`, then `up -d`). The `migrate` step applied all three migrations and the
+API came up healthy.
+
+Then I ran the restore drill by hand, and it failed: "table missing from restore: accounts".
+Nothing was wrong with the backup. The drill restores the newest snapshot, and the newest one
+was the backup taken just before the deploy, from before the `accounts` table existed. A fresh
+backup, then the drill again: passed. The runbook now says to back up again before a manual
+drill after a release with a migration
+([lessons](lessons-learned.md#backups)).
+
+The phone also showed "server not found" for a while, in Safari and in the home-screen app,
+then started working again. I never found the cause; Tailscale on the phone is the likeliest.
+
+**Next:** CSV import, transaction editing and duplicate detection (2b).
+
+## 2026-10-14 — Dropping CSV import; editing everything
+
+The next piece was meant to be CSV import. Before starting, I asked whether it was needed at
+all: once the bank connection exists, I'd import a file once or twice and never again. It's
+not needed, so it's dropped as a planned piece. Decision 19 had already kept it only as the
+fallback if Plaid's free plan falls through. The rest of that piece (editing, bank
+descriptions, duplicate detection) is needed whatever the data source, so it moved into bank
+sync, which is now three parts: 3a (a coverage check plus editing), 3b (connecting) and 3c
+(syncing).
+
+Reading Plaid's docs for the coverage check turned up things that shape the design:
+
+- History is chosen when an account is connected (up to two years) and can't be extended
+  later without reconnecting, which costs one of the Trial's ten lifetime connections. So the
+  first connection asks for everything.
+- Capital One only gives Plaid 90 days of history. That's too short to spot yearly
+  subscriptions on those cards, and it's the one place a CSV import might still earn its keep.
+- Plaid normally tells an app about new transactions by calling it, but this app is only
+  reachable on my private network. It will check on a schedule instead.
+
+Then editing, which the app never had: transactions (every field), categories (name, kind,
+color, emoji) and accounts (name and type). Each create form became a component shared with a
+new edit screen. The edit endpoints take the whole record (PUT), because the forms hold every
+field anyway.
+
+Two pull requests (#40 and this one), each task built and reviewed by separate agents. Things
+caught along the way:
+
+- A lint rule forbids exporting plain functions from component files (it keeps hot reload
+  working). The first implementation switched the rule off for one line. Since that would
+  have been the only suppression in the codebase, the helper moved to `src/lib/` instead, and
+  the plan was updated so later tasks didn't need the same exception.
+- The final review noticed the spec described the shared form differently from what was
+  built, and that the commands I'll run for the coverage check passed the secret key on
+  curl's command line, where other programs can briefly see it. The key now goes in through
+  standard input.
+- The second review pointed out that the account screen's Edit and Delete buttons sit below
+  its whole transaction list. With a few hand-entered rows that's fine, but once a bank
+  account brings two years of history they'd be hundreds of rows down, so they're worth
+  moving up before connecting accounts.
+
+**Next:** run the coverage check against Plaid's sandbox; then connecting accounts (3b).

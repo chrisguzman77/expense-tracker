@@ -293,3 +293,179 @@ def test_summary_orders_by_total_then_name(client):
     add(client, account, clothes, "20.00", on="2026-08-04")
     names = [r["name"] for r in client.get("/api/summary?year=2026&month=8").json()]
     assert names == ["Gas", "Food", "Books", "Travel", "Clothes"]
+
+
+def put(client, txn_id, account_id, category_id, amount, on="2026-08-30", note=None):
+    return client.put(
+        f"/api/transactions/{txn_id}",
+        json={
+            "account_id": account_id,
+            "category_id": category_id,
+            "amount": amount,
+            "occurred_on": on,
+            "note": note,
+        },
+    )
+
+
+def test_edit_changes_every_field(client):
+    signup(client, "a@b.com")
+    wallet = make_account(client, "Wallet")
+    card = make_account(client, "Card", "credit_card")
+    food = make_category(client, "Food")
+    refunds = make_category(client, "Refunds", kind="income")
+    txn = add(client, wallet, food, "-12.50", note="Lunch").json()
+
+    r = put(client, txn["id"], card, refunds, "20.00", on="2026-08-31", note="Returned")
+
+    assert r.status_code == 200, r.text
+    edited = r.json()
+    assert edited == {
+        "id": txn["id"],
+        "amount": "20.00",
+        "occurred_on": "2026-08-31",
+        "note": "Returned",
+        "category": {
+            "id": refunds,
+            "name": "Refunds",
+            "color": "slate",
+            "icon": "🏷️",
+            "kind": "income",
+        },
+        "account": {"id": card, "name": "Card", "type": "credit_card"},
+    }
+    assert client.get("/api/transactions").json() == [edited]
+
+
+def test_edit_rejects_a_zero_amount(client):
+    signup(client, "a@b.com")
+    account = make_account(client)
+    food = make_category(client)
+    txn = add(client, account, food, "-1.00").json()
+
+    assert put(client, txn["id"], account, food, "0").status_code == 422
+
+
+def test_edit_missing_transaction_is_404(client):
+    signup(client, "a@b.com")
+    r = put(client, 999999, make_account(client), make_category(client), "-1.00")
+    assert r.status_code == 404
+    assert r.json() == {"detail": "Transaction not found"}
+
+
+def test_cannot_edit_another_users_transaction(client):
+    signup(client, "a@b.com")
+    txn = add(client, make_account(client), make_category(client), "-12.50").json()
+    client.post("/api/auth/logout")
+
+    signup(client, "c@d.com")
+    r = put(client, txn["id"], make_account(client), make_category(client), "-1.00")
+    assert r.status_code == 404
+    assert r.json() == {"detail": "Transaction not found"}
+
+    client.post("/api/auth/logout")
+    client.post("/api/auth/login", json={"email": "a@b.com", "password": "hunter22!"})
+    assert client.get("/api/transactions").json() == [txn]
+
+
+def test_cannot_move_a_transaction_to_another_users_account_or_category(client):
+    signup(client, "a@b.com")
+    their_account = make_account(client)
+    their_category = make_category(client)
+    client.post("/api/auth/logout")
+
+    signup(client, "c@d.com")
+    my_account = make_account(client)
+    my_category = make_category(client)
+    txn = add(client, my_account, my_category, "-1.00").json()
+
+    r = put(client, txn["id"], their_account, my_category, "-1.00")
+    assert r.status_code == 404
+    assert r.json() == {"detail": "Account not found"}
+    r = put(client, txn["id"], my_account, their_category, "-1.00")
+    assert r.status_code == 404
+    assert r.json() == {"detail": "Category not found"}
+
+
+def test_flipping_a_sign_changes_the_summary(client):
+    signup(client, "a@b.com")
+    account = make_account(client)
+    clothes = make_category(client, "Clothes")
+    txn = add(client, account, clothes, "-50.00").json()
+    assert totals(client) == {"Clothes": "50.00"}
+
+    assert put(client, txn["id"], account, clothes, "50.00").status_code == 200
+
+    assert totals(client) == {"Clothes": "-50.00"}
+
+
+def test_edit_category_changes_name_color_icon_and_kind(client):
+    signup(client, "a@b.com")
+    food = make_category(client, "Food", color="amber", icon="🍔")
+    add(client, make_account(client), food, "-3.00")
+
+    r = client.put(
+        f"/api/categories/{food}",
+        json={"name": "Groceries", "color": "emerald", "icon": "🛒", "kind": "income"},
+    )
+
+    assert r.status_code == 200, r.text
+    edited = r.json()
+    assert edited == {
+        "id": food,
+        "name": "Groceries",
+        "color": "emerald",
+        "icon": "🛒",
+        "kind": "income",
+    }
+    assert client.get("/api/categories").json() == [edited]
+    assert client.get("/api/transactions").json()[0]["category"] == edited
+
+
+def test_category_can_be_saved_under_its_own_name(client):
+    signup(client, "a@b.com")
+    food = make_category(client, "Food")
+    r = client.put(f"/api/categories/{food}", json={"name": "Food", "color": "sky"})
+    assert r.status_code == 200, r.text
+    assert r.json()["color"] == "sky"
+
+
+def test_renaming_a_category_to_a_taken_name_is_409(client):
+    signup(client, "a@b.com")
+    make_category(client, "Food")
+    rent = make_category(client, "Rent")
+
+    r = client.put(f"/api/categories/{rent}", json={"name": "Food"})
+
+    assert r.status_code == 409
+    assert r.json() == {"detail": "Category name taken"}
+    # The failed update's rollback must not discard anything.
+    assert [c["name"] for c in client.get("/api/categories").json()] == ["Food", "Rent"]
+
+
+def test_cannot_edit_another_users_category(client):
+    signup(client, "a@b.com")
+    food = make_category(client, "Food")
+    client.post("/api/auth/logout")
+
+    signup(client, "c@d.com")
+    r = client.put(f"/api/categories/{food}", json={"name": "Mine"})
+    assert r.status_code == 404
+    assert r.json() == {"detail": "Category not found"}
+
+
+def test_changing_a_kind_removes_the_category_from_past_summaries(client):
+    signup(client, "a@b.com")
+    account = make_account(client)
+    payment = make_category(client, "Card payment")
+    food = make_category(client, "Food")
+    add(client, account, payment, "-300.00", on="2026-07-15")
+    add(client, account, food, "-10.00", on="2026-07-16")
+    assert totals(client, month=7) == {"Card payment": "300.00", "Food": "10.00"}
+
+    r = client.put(
+        f"/api/categories/{payment}", json={"name": "Card payment", "kind": "transfer"}
+    )
+
+    assert r.status_code == 200, r.text
+    assert totals(client, month=7) == {"Food": "10.00"}
