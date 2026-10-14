@@ -47,6 +47,21 @@ and the takeaway. Newest last. Design decisions themselves are in [decisions/](d
 - *Impact:* a window of milliseconds; log out everywhere is immune because the reissued token
   carries the old version. Accepted and recorded in decision 20.
 
+**A rollback in the code under test wiped the test's own data** (piece 2a, 2026-10-14)
+- *What happened:* the first test of a duplicate account name passed, but printed a new
+  SQLAlchemy warning: "transaction already deassociated from connection". Each test runs inside
+  one outer transaction that is rolled back at the end. When the service caught the
+  `IntegrityError` and called `rollback()`, SQLAlchemy 2 rolled back that outer transaction
+  too, silently discarding everything the test had created before the failed insert (here,
+  the user and their first account).
+- *Why it hadn't shown up:* no earlier backend test reached a service rollback; the duplicate
+  category check is only tested in the frontend.
+- *Fix:* the test session uses `join_transaction_mode="create_savepoint"`, so the service's
+  commits and rollbacks become savepoints inside the test's transaction. The test now also
+  checks that the first account survives; that assertion failed before the fix.
+- *Takeaway:* a new warning in test output is a finding, not noise. Here it was the only sign
+  that the test was checking less than it appeared to.
+
 ## Frontend
 
 **Test request interceptors didn't see requests** (2026-10-02)
