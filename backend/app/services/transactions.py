@@ -51,6 +51,26 @@ def _owned_category(db: Session, user_id: int, category_id: int) -> Category:
     return cat
 
 
+def update_category(
+    db: Session,
+    user_id: int,
+    category_id: int,
+    name: str,
+    color: str,
+    icon: str,
+    kind: str,
+) -> Category:
+    cat = _owned_category(db, user_id, category_id)
+    cat.name, cat.color, cat.icon, cat.kind = name, color, icon, kind
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise NameTaken()
+    db.refresh(cat)
+    return cat
+
+
 def delete_category(db: Session, user_id: int, category_id: int) -> None:
     cat = _owned_category(db, user_id, category_id)
     in_use = db.scalar(select(func.count()).where(Transaction.category_id == cat.id))

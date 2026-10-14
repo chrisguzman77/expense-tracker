@@ -42,6 +42,20 @@ def get_owned_account(db: Session, user_id: int, account_id: int) -> Account:
     return account
 
 
+def update_account(
+    db: Session, user_id: int, account_id: int, name: str, account_type: str
+) -> Account:
+    account = get_owned_account(db, user_id, account_id)
+    account.name, account.type = name, account_type
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise NameTaken()
+    db.refresh(account)
+    return account
+
+
 def delete_account(db: Session, user_id: int, account_id: int) -> None:
     account = get_owned_account(db, user_id, account_id)
     in_use = db.scalar(select(func.count()).where(Transaction.account_id == account.id))

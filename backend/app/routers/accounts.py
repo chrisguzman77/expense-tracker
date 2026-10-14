@@ -29,6 +29,21 @@ def create_account(
         raise HTTPException(status.HTTP_409_CONFLICT, "Account name taken")
 
 
+@router.put("/{account_id}", response_model=AccountRead)
+def update_account(
+    account_id: int,
+    body: AccountCreate,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    try:
+        return svc.update_account(db, user.id, account_id, body.name, body.type)
+    except svc.NotFound:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Account not found")
+    except svc.NameTaken:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Account name taken")
+
+
 @router.delete("/{account_id}", status_code=204)
 def delete_account(
     account_id: int,
