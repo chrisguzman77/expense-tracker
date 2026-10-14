@@ -201,6 +201,9 @@ IMAGE_TAG=<full commit sha from main>
 ```
 then `docker compose up -d`. `IMAGE_TAG` rolls back the app (api, web, migrate); the backup
 service follows `BACKUP_IMAGE_TAG` instead, so an app rollback doesn't change the backup scripts.
+The restore drill checks for specific tables, though, so when a rollback also restores a backup
+from before a migration that renamed or added tables, set `BACKUP_IMAGE_TAG` to the same commit
+(backup images carry the same SHA tags); otherwise the next drill reports a missing table.
 Caveat: this rolls back code, not the database. If the newer version ran a migration, the older
 code may not match the schema. Restore from a backup in that case (see below).
 Rolling `IMAGE_TAG` back to a commit from before registration was closed reopens sign-ups,

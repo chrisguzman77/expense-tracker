@@ -89,6 +89,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/accounts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Accounts */
+        get: operations["list_accounts_api_accounts_get"];
+        put?: never;
+        /** Create Account */
+        post: operations["create_account_api_accounts_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/accounts/{account_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Account */
+        delete: operations["delete_account_api_accounts__account_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/categories": {
         parameters: {
             query?: never;
@@ -124,25 +159,25 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/expenses": {
+    "/api/transactions": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** List Expenses */
-        get: operations["list_expenses_api_expenses_get"];
+        /** List Transactions */
+        get: operations["list_transactions_api_transactions_get"];
         put?: never;
-        /** Create Expense */
-        post: operations["create_expense_api_expenses_post"];
+        /** Create Transaction */
+        post: operations["create_transaction_api_transactions_post"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/api/expenses/{expense_id}": {
+    "/api/transactions/{transaction_id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -152,8 +187,8 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        /** Delete Expenses */
-        delete: operations["delete_expenses_api_expenses__expense_id__delete"];
+        /** Delete Transaction */
+        delete: operations["delete_transaction_api_transactions__transaction_id__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -197,6 +232,28 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AccountCreate */
+        AccountCreate: {
+            /** Name */
+            name: string;
+            /**
+             * Type
+             * @enum {string}
+             */
+            type: "checking" | "savings" | "credit_card" | "cash";
+        };
+        /** AccountRead */
+        AccountRead: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /**
+             * Type
+             * @enum {string}
+             */
+            type: "checking" | "savings" | "credit_card" | "cash";
+        };
         /** CategoryCreate */
         CategoryCreate: {
             /** Name */
@@ -212,6 +269,12 @@ export interface components {
              * @default 🏷️
              */
             icon: string;
+            /**
+             * Kind
+             * @default spending
+             * @enum {string}
+             */
+            kind: "spending" | "income" | "transfer";
         };
         /** CategoryRead */
         CategoryRead: {
@@ -226,6 +289,11 @@ export interface components {
             color: "amber" | "emerald" | "sky" | "violet" | "rose" | "orange" | "teal" | "indigo" | "lime" | "slate";
             /** Icon */
             icon: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "spending" | "income" | "transfer";
         };
         /** CategorySummary */
         CategorySummary: {
@@ -243,39 +311,42 @@ export interface components {
             /** Total */
             total: string;
         };
-        /** ExpenseCreate */
-        ExpenseCreate: {
+        /** HTTPValidationError */
+        HTTPValidationError: {
+            /** Detail */
+            detail?: components["schemas"]["ValidationError"][];
+        };
+        /** TransactionCreate */
+        TransactionCreate: {
+            /** Account Id */
+            account_id: number;
             /** Category Id */
             category_id: number;
             /** Amount */
             amount: number | string;
             /**
-             * Spent On
+             * Occurred On
              * Format: date
              */
-            spent_on: string;
+            occurred_on: string;
             /** Note */
             note?: string | null;
         };
-        /** ExpenseRead */
-        ExpenseRead: {
+        /** TransactionRead */
+        TransactionRead: {
             /** Id */
             id: number;
             /** Amount */
             amount: string;
             /**
-             * Spent On
+             * Occurred On
              * Format: date
              */
-            spent_on: string;
+            occurred_on: string;
             /** Note */
             note: string | null;
             category: components["schemas"]["CategoryRead"];
-        };
-        /** HTTPValidationError */
-        HTTPValidationError: {
-            /** Detail */
-            detail?: components["schemas"]["ValidationError"][];
+            account: components["schemas"]["AccountRead"];
         };
         /** UserCreate */
         UserCreate: {
@@ -456,6 +527,88 @@ export interface operations {
             };
         };
     };
+    list_accounts_api_accounts_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccountRead"][];
+                };
+            };
+        };
+    };
+    create_account_api_accounts_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AccountCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccountRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_account_api_accounts__account_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                account_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_categories_api_categories_get: {
         parameters: {
             query?: never;
@@ -538,11 +691,12 @@ export interface operations {
             };
         };
     };
-    list_expenses_api_expenses_get: {
+    list_transactions_api_transactions_get: {
         parameters: {
             query?: {
                 start?: string | null;
                 end?: string | null;
+                account_id?: number | null;
             };
             header?: never;
             path?: never;
@@ -556,7 +710,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ExpenseRead"][];
+                    "application/json": components["schemas"]["TransactionRead"][];
                 };
             };
             /** @description Validation Error */
@@ -570,7 +724,7 @@ export interface operations {
             };
         };
     };
-    create_expense_api_expenses_post: {
+    create_transaction_api_transactions_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -579,7 +733,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["ExpenseCreate"];
+                "application/json": components["schemas"]["TransactionCreate"];
             };
         };
         responses: {
@@ -589,7 +743,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ExpenseRead"];
+                    "application/json": components["schemas"]["TransactionRead"];
                 };
             };
             /** @description Validation Error */
@@ -603,12 +757,12 @@ export interface operations {
             };
         };
     };
-    delete_expenses_api_expenses__expense_id__delete: {
+    delete_transaction_api_transactions__transaction_id__delete: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                expense_id: number;
+                transaction_id: number;
             };
             cookie?: never;
         };

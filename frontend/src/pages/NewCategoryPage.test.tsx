@@ -25,7 +25,7 @@ function renderPage(entry: InitialEntry) {
   const router = createMemoryRouter(
     [
       { path: "/categories/new", element: <NewCategoryPage /> },
-      { path: "/expenses/new", element: <StateProbe label="expense form" /> },
+      { path: "/transactions/new", element: <StateProbe label="transaction form" /> },
       { path: "/categories", element: <StateProbe label="categories tab" /> },
     ],
     { initialEntries: [entry] },
@@ -45,24 +45,24 @@ async function createTravel() {
 }
 
 describe("NewCategoryPage", () => {
-  it("returns to the expense form with the draft and the new category selected", async () => {
+  it("returns to the transaction form with the draft and the new category selected", async () => {
     renderPage({ pathname: "/categories/new", state: { draft: { amount: "7.25" } } });
 
     await createTravel();
 
-    const probe = await screen.findByText(/expense form/);
-    expect(JSON.parse(probe.textContent!.replace("expense form ", ""))).toEqual({
+    const probe = await screen.findByText(/transaction form/);
+    expect(JSON.parse(probe.textContent!.replace("transaction form ", ""))).toEqual({
       draft: { amount: "7.25" },
       categoryId: 7,
     });
   });
 
-  it("goes back to the expense form, keeping the draft", async () => {
+  it("goes back to the transaction form, keeping the draft", async () => {
     renderPage({ pathname: "/categories/new", state: { draft: { amount: "7.25" } } });
 
     await userEvent.setup().click(screen.getByRole("link", { name: /back/i }));
 
-    expect((await screen.findByText(/expense form/)).textContent).toContain('"amount":"7.25"');
+    expect((await screen.findByText(/transaction form/)).textContent).toContain('"amount":"7.25"');
   });
 
   it("returns to the Categories tab when opened without a draft", async () => {

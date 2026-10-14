@@ -18,9 +18,13 @@ export function SummaryPage() {
   const [year, month] = monthValue.split("-").map(Number);
   const summary = useSummary(year, month);
 
-  // The API sorts by total, largest first, with unused categories (0) last.
+  // The API sorts by total, largest first (refund-heavy negatives last), then by name.
   const rows = summary.data ?? [];
   const totalCents = rows.reduce((sum, r) => sum + toCents(r.total), 0);
+  // Shares come from categories with spending: a refund-heavy (negative)
+  // category would otherwise push the others past 100%.
+  const spentCents = rows.reduce((sum, r) => sum + Math.max(0, toCents(r.total)), 0);
+  const hasActivity = rows.some((r) => toCents(r.total) !== 0);
   const segments = rows
     .filter((r) => toCents(r.total) > 0)
     .map((r) => ({ key: r.category_id, color: colorVar(r.color), cents: toCents(r.total) }));
@@ -55,10 +59,10 @@ export function SummaryPage() {
             {summary.error.message}
           </p>
         )}
-        {summary.data && totalCents === 0 && (
+        {summary.data && !hasActivity && (
           <Card className="p-6 text-center text-muted">No spending in {monthLabel(monthValue)}</Card>
         )}
-        {summary.data && totalCents > 0 && (
+        {summary.data && hasActivity && (
           <Card className="p-4">
             <div className="flex justify-center py-2">
               <Donut segments={segments} size={160} thickness={24} />
@@ -66,7 +70,7 @@ export function SummaryPage() {
             <ul aria-label="Categories this month" className="mt-2 flex flex-col">
               {rows.map((r) => {
                 const cents = toCents(r.total);
-                const percent = sharePercent(cents, totalCents);
+                const percent = sharePercent(cents, spentCents);
                 return (
                   <li key={r.category_id} className="py-2.5">
                     <div className="flex items-center gap-3">

@@ -1,5 +1,5 @@
 // Dates here are local calendar dates as "YYYY-MM-DD" strings, matching the
-// API's spent_on. Parsing goes through new Date(y, m - 1, d) so the browser's
+// API's occurred_on. Parsing goes through new Date(y, m - 1, d) so the browser's
 // time zone never shifts a date by one.
 
 const pad = (n: number) => String(n).padStart(2, "0");

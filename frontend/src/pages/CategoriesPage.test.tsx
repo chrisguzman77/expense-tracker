@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
 import { server } from "../test/server";
 import { CategoriesPage } from "./CategoriesPage";
 
-type Category = { id: number; name: string; color: string; icon: string };
+type Category = { id: number; name: string; color: string; icon: string; kind: string };
 
 // A tiny in-memory backend so list/create/delete interact like the real API.
 function fakeCategories(initial: Category[]) {
@@ -17,7 +17,7 @@ function fakeCategories(initial: Category[]) {
   server.use(
     http.get("/api/categories", () => HttpResponse.json(rows)),
     http.post("/api/categories", async ({ request }) => {
-      const body = (await request.json()) as { name: string; color: string; icon: string };
+      const body = (await request.json()) as { name: string; color: string; icon: string; kind: string };
       posted.push(body);
       if (rows.some((r) => r.name === body.name)) {
         return HttpResponse.json({ detail: "Category name taken" }, { status: 409 });
@@ -28,7 +28,7 @@ function fakeCategories(initial: Category[]) {
     }),
     http.delete("/api/categories/:id", ({ params }) => {
       const id = Number(params.id);
-      if (id === 99) return HttpResponse.json({ detail: "Category has expenses" }, { status: 409 });
+      if (id === 99) return HttpResponse.json({ detail: "Category has transactions" }, { status: 409 });
       rows.splice(rows.findIndex((r) => r.id === id), 1);
       return new HttpResponse(null, { status: 204 });
     }),
@@ -48,8 +48,8 @@ function renderPage() {
   );
 }
 
-const food = { id: 1, name: "Food", color: "amber", icon: "🍔" };
-const rent = { id: 2, name: "Rent", color: "sky", icon: "🏠" };
+const food = { id: 1, name: "Food", color: "amber", icon: "🍔", kind: "spending" };
+const rent = { id: 2, name: "Rent", color: "sky", icon: "🏠", kind: "spending" };
 
 describe("CategoriesPage", () => {
   it("lists the user's categories", async () => {
@@ -77,9 +77,39 @@ describe("CategoriesPage", () => {
 
     const list = screen.getByRole("list", { name: "Categories" });
     expect(await within(list).findByText("Travel")).toBeInTheDocument();
-    expect(posted).toEqual([{ name: "Travel", icon: "✈️", color: "teal" }]);
+    expect(posted).toEqual([{ name: "Travel", icon: "✈️", color: "teal", kind: "spending" }]);
     expect(screen.getByLabelText("Name")).toHaveValue("");
     expect(screen.getByLabelText("Emoji")).toHaveValue("🏷️");
+  });
+
+  it("creates an income category", async () => {
+    const { posted } = fakeCategories([food]);
+    renderPage();
+    const user = userEvent.setup();
+    await screen.findByText("Food");
+
+    await user.type(screen.getByLabelText("Name"), "Paycheck");
+    await user.click(screen.getByRole("radio", { name: "Income" }));
+    await user.click(screen.getByRole("button", { name: "Add category" }));
+
+    await screen.findByText("Paycheck");
+    expect(posted).toEqual([{ name: "Paycheck", icon: "🏷️", color: "amber", kind: "income" }]);
+  });
+
+  it("labels income and transfer categories, not spending ones", async () => {
+    fakeCategories([
+      food,
+      { id: 3, name: "Paycheck", color: "emerald", icon: "💰", kind: "income" },
+      { id: 4, name: "Card payment", color: "slate", icon: "💳", kind: "transfer" },
+    ]);
+    renderPage();
+
+    const list = await screen.findByRole("list", { name: "Categories" });
+    expect(within(list).getAllByRole("listitem").map((li) => li.textContent)).toEqual([
+      "🍔Food",
+      "💰PaycheckIncome",
+      "💳Card paymentTransfer",
+    ]);
   });
 
   it("rejects an emoji field longer than 16 characters without calling the API", async () => {
@@ -111,7 +141,7 @@ describe("CategoriesPage", () => {
     await user.click(screen.getByRole("button", { name: "Add category" }));
 
     await screen.findByText("Many");
-    expect(posted).toEqual([{ name: "Many", icon: "🍔".repeat(16), color: "amber" }]);
+    expect(posted).toEqual([{ name: "Many", icon: "🍔".repeat(16), color: "amber", kind: "spending" }]);
   });
 
   it("shows the server message when the name is taken", async () => {
@@ -137,14 +167,14 @@ describe("CategoriesPage", () => {
     expect(screen.queryByText("Rent")).not.toBeInTheDocument();
   });
 
-  it("shows the server message when deleting a category with expenses", async () => {
+  it("shows the server message when deleting a category with transactions", async () => {
     fakeCategories([{ ...food, id: 99 }]);
     renderPage();
     const user = userEvent.setup();
 
     await user.click(await screen.findByRole("button", { name: "Delete Food" }));
 
-    expect(await screen.findByRole("alert")).toHaveTextContent("Category has expenses");
+    expect(await screen.findByRole("alert")).toHaveTextContent("Category has transactions");
     expect(screen.getByText("Food")).toBeInTheDocument();
   });
 });

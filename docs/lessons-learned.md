@@ -17,8 +17,11 @@ and the takeaway. Newest last. Design decisions themselves are in [decisions/](d
 
 **passlib broke with bcrypt 4** (2026-09-03)
 - *Fix:* call `bcrypt` directly. See [decision 3](decisions/0003-bcrypt-without-passlib.md).
-- *Still open:* bcrypt rejects passwords over 72 bytes, but the registration schema allows 120
-  characters.
+- *Follow-up (fixed 2026-10-13):* bcrypt rejects passwords over 72 bytes, but registration
+  allowed 120 characters, and login passed any length to bcrypt, so a long password typed on
+  the login page caused a 500. The limit is now checked in bytes at registration, and login
+  treats a longer password as wrong. A 72-character cap wouldn't have been enough: an emoji is
+  4 bytes.
 
 **The monthly summary dropped categories** (found 2026-10-06, PR #11)
 - *What happened:* categories whose expenses were all in other months vanished from a month's
@@ -43,6 +46,21 @@ and the takeaway. Newest last. Design decisions themselves are in [decisions/](d
   reissued cookies, so deleting one was final.
 - *Impact:* a window of milliseconds; log out everywhere is immune because the reissued token
   carries the old version. Accepted and recorded in decision 20.
+
+**A rollback in the code under test wiped the test's own data** (piece 2a, 2026-10-14)
+- *What happened:* the first test of a duplicate account name passed, but printed a new
+  SQLAlchemy warning: "transaction already deassociated from connection". Each test runs inside
+  one outer transaction that is rolled back at the end. When the service caught the
+  `IntegrityError` and called `rollback()`, SQLAlchemy 2 rolled back that outer transaction
+  too, silently discarding everything the test had created before the failed insert (here,
+  the user and their first account).
+- *Why it hadn't shown up:* no earlier backend test reached a service rollback; the duplicate
+  category check is only tested in the frontend.
+- *Fix:* the test session uses `join_transaction_mode="create_savepoint"`, so the service's
+  commits and rollbacks become savepoints inside the test's transaction. The test now also
+  checks that the first account survives; that assertion failed before the fix.
+- *Takeaway:* a new warning in test output is a finding, not noise. Here it was the only sign
+  that the test was checking less than it appeared to.
 
 ## Frontend
 
@@ -208,6 +226,20 @@ and the takeaway. Newest last. Design decisions themselves are in [decisions/](d
 **ShellCheck disagreed between laptop and CI** (2026-10-11)
 - The CI runner's preinstalled ShellCheck was newer and flagged code the local version
   accepted. CI and local runs now use the same pinned container, `koalaman/shellcheck:v0.11.0`.
+
+**Renaming a table almost broke the monthly restore drill** (piece 2a, 2026-10-14)
+- *What happened:* the migration renamed `expenses` to `transactions`. The app, its tests, two
+  task reviews and a whole-branch review all passed. Then CI's backup job failed: its
+  end-to-end test seeded data with `insert into expenses`.
+- *The real problem:* the production restore drill also checks that a restored backup contains
+  an `expenses` table. After the release, every monthly drill would have failed and alerted, and
+  because image publishing depends on the backup job, the release itself would have stalled.
+- *Why nobody saw it:* the plan's search for leftover old names covered `frontend/src`, and the
+  reviews covered `backend/` and `frontend/`. The backup scripts live in `backup/`.
+- *Fix:* the drill checks `users`, `accounts`, `categories` and `transactions`, and the test seeds
+  an account and a signed transaction.
+- *Takeaway:* a rename is a search over the whole repository, not just the app. And the drill's
+  end-to-end test paid for itself: it is the only check that knows the schema from the outside.
 
 ## Going live
 

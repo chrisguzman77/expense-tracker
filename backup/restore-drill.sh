@@ -33,14 +33,14 @@ log "restoring latest snapshot into $DRILL_DB"
 restic dump --retry-lock 10m --tag pgdump latest /expenses.dump \
   | pg_restore --no-owner --exit-on-error -d "$DRILL_DB"
 
-for table in users categories expenses alembic_version; do
+for table in users accounts categories transactions alembic_version; do
   [ "$(q "$DRILL_DB" "select to_regclass('public.$table') is not null")" = t ] \
     || { log "table missing from restore: $table"; exit 1; }
 done
 
 # Counts legitimately change between backup and drill, so only an empty restore of a
 # non-empty live table is treated as a failure.
-for table in users categories expenses; do
+for table in users accounts categories transactions; do
   live=$(q "$LIVE_DB" "select count(*) from $table")
   restored=$(q "$DRILL_DB" "select count(*) from $table")
   log "$table: live=$live restored=$restored"
