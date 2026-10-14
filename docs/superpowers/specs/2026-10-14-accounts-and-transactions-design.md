@@ -149,7 +149,12 @@ Existing patterns: Screen, Card, Field, native-select styling, in-page confirmat
 - **Categories:** the create screen gets a Spending / Income / Transfer picker (default
   Spending); the list labels income and transfer categories.
 - **Summary and breakdown card:** spending-only through `/api/summary`; the donut leaves out
-  any category whose total is zero or below; the ranked list still shows the number.
+  any category whose total is zero or below (already true in `Donut` and `BreakdownCard`); the
+  ranked list still shows the number. Found while planning: the Summary page computes each
+  share from the net total, so a refund-heavy category would push another past 100%, and a
+  month with only refunds (negative total) renders neither the list nor the empty message.
+  Shares are computed from the positive totals only, and the empty message shows only when
+  every total is zero.
 - After implementation: 390px light and dark screenshots of the new screens with the CDP
   script.
 
@@ -174,7 +179,9 @@ Backend:
   table, column, index, constraints and sequence carry their new names. Downgrade and check the
   original rows and names return. Upgrade again and check the existing "Cash" account is
   reused (one account, not a conflict error). A second case: a user who already created an
-  account named "Cash" before the reshape gets their expenses moved into it. CI's database step also creates `expenses_migration_test`.
+  account named "Cash" before the reshape gets their expenses moved into it. The test's
+  fixture drops and recreates `expenses_migration_test` on each run (the `app` role may create
+  databases), so CI and local runs need no extra setup.
 
 Frontend:
 
