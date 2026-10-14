@@ -183,6 +183,10 @@ switcher and reopen).
 `migrate` runs again on every `up` and applies only migrations that are new. If it exits non-zero,
 compose stops with an error instead of starting the new api. Check `docker compose logs migrate`.
 
+To run the restore drill by hand after a release with a migration, run `backup-now` again first.
+The drill restores the newest snapshot and checks for the current tables, so the backup taken
+before the deploy fails it with "table missing from restore".
+
 If `compose.yaml` itself changed on `main`, re-download it first (step 4, without overwriting `.env`).
 
 ## Installing on iPhone

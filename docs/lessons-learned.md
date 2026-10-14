@@ -241,6 +241,16 @@ and the takeaway. Newest last. Design decisions themselves are in [decisions/](d
 - *Takeaway:* a rename is a search over the whole repository, not just the app. And the drill's
   end-to-end test paid for itself: it is the only check that knows the schema from the outside.
 
+**The restore drill failed right after a deploy** (2a rollout, 2026-10-14)
+- *What happened:* a manual drill straight after the release reported "table missing from
+  restore: accounts".
+- *Cause:* the drill restores the newest snapshot, which was the backup taken just before the
+  deploy, before the migration created `accounts`. The drill, already updated, checks for the
+  current tables. The backup itself was fine.
+- *Fix:* run `backup-now` again, then the drill. It passed. The runbook says so now.
+- *Why the monthly drill is safe:* it runs at 05:00 on the 1st, two hours after the nightly
+  backup. Only a release with a migration deployed between those two times would trip it.
+
 ## Going live
 
 **`qm reboot` timed out on a brand-new VM** (2026-10-12)
