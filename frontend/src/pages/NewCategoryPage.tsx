@@ -22,7 +22,7 @@ export function NewCategoryPage() {
     >
       <Card className="p-4">
         <CategoryForm
-          onCreated={(category) =>
+          onSaved={(category) =>
             fromTransaction
               ? navigate("/transactions/new", { replace: true, state: { draft, categoryId: category.id } })
               : navigate("/categories", { replace: true })

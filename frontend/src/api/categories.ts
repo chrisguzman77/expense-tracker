@@ -2,6 +2,7 @@ import { type QueryClient, useMutation, useQuery, useQueryClient } from "@tansta
 import { api, unwrap, unwrapVoid } from "./client";
 import type { components } from "./schema";
 import { summaryQueryKey } from "./summary";
+import { transactionsQueryKey } from "./transactions";
 
 export type Category = components["schemas"]["CategoryRead"];
 export type CategoryCreate = components["schemas"]["CategoryCreate"];
@@ -41,5 +42,19 @@ export function useDeleteCategory() {
         api.DELETE("/api/categories/{category_id}", { params: { path: { category_id: id } } }),
       ),
     onSuccess: () => invalidateCategoryData(queryClient),
+  });
+}
+
+export function useUpdateCategory() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, body }: { id: number; body: CategoryCreate }) =>
+      unwrap(api.PUT("/api/categories/{category_id}", { params: { path: { category_id: id } }, body })),
+    // Transaction rows show the category's name, color and emoji.
+    onSuccess: () =>
+      Promise.all([
+        invalidateCategoryData(queryClient),
+        queryClient.invalidateQueries({ queryKey: transactionsQueryKey }),
+      ]),
   });
 }

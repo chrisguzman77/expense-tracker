@@ -37,9 +37,13 @@ function fakeCategories(initial: Category[]) {
 }
 
 function renderPage() {
-  const router = createMemoryRouter([{ path: "/categories", element: <CategoriesPage /> }], {
-    initialEntries: ["/categories"],
-  });
+  const router = createMemoryRouter(
+    [
+      { path: "/categories", element: <CategoriesPage /> },
+      { path: "/categories/:id/edit", element: <p>edit screen</p> },
+    ],
+    { initialEntries: ["/categories"] },
+  );
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
     <QueryClientProvider client={queryClient}>
@@ -61,6 +65,15 @@ describe("CategoriesPage", () => {
       expect.stringContaining("Food"),
       expect.stringContaining("Rent"),
     ]);
+  });
+
+  it("opens a category's edit screen when its row is tapped", async () => {
+    fakeCategories([food, rent]);
+    renderPage();
+
+    await userEvent.setup().click(await screen.findByRole("link", { name: "Edit Food" }));
+
+    expect(await screen.findByText("edit screen")).toBeInTheDocument();
   });
 
   it("creates a category with a name, emoji and color", async () => {
