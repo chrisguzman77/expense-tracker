@@ -5,6 +5,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
 from ..models.transaction import Category, Transaction
+from ..schemas.transaction import TransactionCreate
 from . import accounts
 
 
@@ -86,7 +87,9 @@ def list_transactions(
     )
 
 
-def create_transaction(db: Session, user_id: int, data) -> Transaction:
+def create_transaction(
+    db: Session, user_id: int, data: TransactionCreate
+) -> Transaction:
     accounts.get_owned_account(db, user_id, data.account_id)
     _owned_category(db, user_id, data.category_id)
     txn = Transaction(user_id=user_id, **data.model_dump())
@@ -104,7 +107,7 @@ def _owned_transaction(db: Session, user_id: int, transaction_id: int) -> Transa
 
 
 def update_transaction(
-    db: Session, user_id: int, transaction_id: int, data
+    db: Session, user_id: int, transaction_id: int, data: TransactionCreate
 ) -> Transaction:
     txn = _owned_transaction(db, user_id, transaction_id)
     accounts.get_owned_account(db, user_id, data.account_id)

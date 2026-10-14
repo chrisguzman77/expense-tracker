@@ -133,4 +133,17 @@ describe("EditTransactionPage", () => {
 
     expect(await screen.findByText("Transaction not found")).toBeInTheDocument();
   });
+
+  it("shows an error when a list fails to load", async () => {
+    server.use(
+      http.get("/api/transactions", () => HttpResponse.json({ detail: "Server error" }, { status: 500 })),
+      http.get("/api/accounts", () => HttpResponse.json([])),
+      http.get("/api/categories", () => HttpResponse.json([])),
+    );
+    renderPage("/transactions/10/edit");
+
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
+    expect(screen.getByRole("alert")).toHaveTextContent("Server error");
+    expect(screen.queryByLabelText("Amount")).not.toBeInTheDocument();
+  });
 });
