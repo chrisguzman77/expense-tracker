@@ -85,20 +85,25 @@ Sources and quotes go into the research note (see Docs).
      is pending.
    - Never use a "request production access" button.
    - Note any approval wait, and whether the sign-up asks for a company.
-2. **Search the sandbox** from your own terminal.
-   - Load the sandbox keys without echoing them, so they stay in that shell and never reach
-     the repo, `.env` or the chat:
+2. **Search the sandbox** from your own terminal (zsh).
+   - Load the sandbox keys. Each `read` shows a prompt and doesn't echo what you type, so the
+     keys stay in that shell and never reach the repo, `.env` or the chat:
      ```
-     read -s PLAID_CLIENT_ID; read -s PLAID_SECRET; export PLAID_CLIENT_ID PLAID_SECRET
+     read -rs "PLAID_CLIENT_ID?Client ID: "; echo
+     read -rs "PLAID_SECRET?Sandbox secret: "; echo
+     export PLAID_CLIENT_ID PLAID_SECRET
      ```
-   - Then search for the four banks:
+   - Then search for the four banks. `jq` builds each request from the environment and `curl`
+     reads it from stdin, so the secret never appears in a command line (where `ps` could see it):
      ```
      for q in "Wells Fargo" "Chase" "Capital One" "Discover"; do
-       curl -s https://sandbox.plaid.com/institutions/search -H 'Content-Type: application/json' \
-         -d "{\"client_id\":\"$PLAID_CLIENT_ID\",\"secret\":\"$PLAID_SECRET\",\"query\":\"$q\",\"products\":[\"transactions\"],\"country_codes\":[\"US\"]}" \
+       jq -n --arg q "$q" '{client_id: env.PLAID_CLIENT_ID, secret: env.PLAID_SECRET, query: $q, country_codes: ["US"]}' \
+         | curl -s https://sandbox.plaid.com/institutions/search -H 'Content-Type: application/json' -d @- \
          | jq 'if .institutions then [.institutions[] | {institution_id, name, oauth, products}] else {error_code, error_message} end'
      done
      ```
+     There is no product filter, so a bank without Transactions still shows up, with its
+     product list.
    - Paste the output. It holds only names, IDs, product lists and the OAuth flag.
 3. **Check the dashboard's OAuth institutions page** for Chase, Wells Fargo and Capital One,
    and note anything marked as needing extra steps.
@@ -107,7 +112,9 @@ Sources and quotes go into the research note (see Docs).
 
 ### Outcomes
 
-- **All four supported:** 3b proceeds on Plaid.
+- **All four supported:** 3b proceeds on Plaid. A sandbox listing only shows that Plaid knows
+  the bank and which products it offers; whether a real connection works on the Trial is what
+  the dashboard check in step 3 answers.
 - **Capital One's download goes back much further than 90 days:** a small, one-off CSV
   backfill for that account may come back as its own decision. It isn't planned yet.
 - **A bank isn't supported, or the Trial isn't available to an individual:** stop and decide
@@ -153,8 +160,10 @@ schema rather than a copy, and returns 200 with the usual read shape.
 
 The create screens' forms become components used by create and edit:
 
-- **`TransactionForm`**, pulled out of `NewTransactionPage`. It takes starting values and a
-  submit function.
+- **`TransactionForm`**, pulled out of `NewTransactionPage`. It takes starting values, an
+  optional transaction id (when set, it saves with PUT instead of POST) and an `onSaved`
+  callback. `CategoryForm` and `AccountForm` follow the same pattern: an optional record to
+  edit, and `onSaved`.
   - On edit, the money in/out toggle is set from the stored sign, and the amount field shows
     the value without its sign.
   - The "+ New category" shortcut (the draft round trip through the category screen) stays on
