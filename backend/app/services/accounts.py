@@ -1,14 +1,18 @@
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from ..models.account import Account
+from ..models.transaction import Transaction
 
 
 class NotFound(Exception): ...
 
 
 class NameTaken(Exception): ...
+
+
+class AccountInUse(Exception): ...
 
 
 def list_accounts(db: Session, user_id: int) -> list[Account]:
@@ -40,5 +44,8 @@ def get_owned_account(db: Session, user_id: int, account_id: int) -> Account:
 
 def delete_account(db: Session, user_id: int, account_id: int) -> None:
     account = get_owned_account(db, user_id, account_id)
+    in_use = db.scalar(select(func.count()).where(Transaction.account_id == account.id))
+    if in_use:
+        raise AccountInUse()
     db.delete(account)
     db.commit()

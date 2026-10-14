@@ -9,17 +9,24 @@ import { AccountDetailPage } from "./AccountDetailPage";
 
 const wells = { id: 1, name: "Wells Fargo", type: "checking" };
 
-function fakeApi({ inUse = false } = {}) {
+const food = { id: 1, name: "Food", color: "amber", icon: "🍔" };
+
+function fakeApi({ inUse = false, transactions = [] as object[] } = {}) {
   const deleted: number[] = [];
+  const requested: (string | null)[] = [];
   server.use(
     http.get("/api/accounts", () => HttpResponse.json([wells])),
+    http.get("/api/transactions", ({ request }) => {
+      requested.push(new URL(request.url).searchParams.get("account_id"));
+      return HttpResponse.json(transactions);
+    }),
     http.delete("/api/accounts/:id", ({ params }) => {
       deleted.push(Number(params.id));
       if (inUse) return HttpResponse.json({ detail: "Account has transactions" }, { status: 409 });
       return new HttpResponse(null, { status: 204 });
     }),
   );
-  return { deleted };
+  return { deleted, requested };
 }
 
 function renderPage(path: string) {
@@ -39,6 +46,23 @@ function renderPage(path: string) {
 }
 
 describe("AccountDetailPage", () => {
+  it("lists the account's transactions", async () => {
+    const { requested } = fakeApi({
+      transactions: [{ id: 10, amount: "-12.50", occurred_on: "2026-10-10", note: "Lunch", category: food, account: wells }],
+    });
+    renderPage("/accounts/1");
+
+    expect(await screen.findByRole("link", { name: /lunch/i })).toHaveTextContent("$12.50");
+    expect(requested).toEqual(["1"]);
+  });
+
+  it("says when the account has no transactions", async () => {
+    fakeApi();
+    renderPage("/accounts/1");
+
+    expect(await screen.findByText("No transactions in this account yet.")).toBeInTheDocument();
+  });
+
   it("shows the account's name and type", async () => {
     fakeApi();
     renderPage("/accounts/1");

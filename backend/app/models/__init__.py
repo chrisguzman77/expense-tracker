@@ -1,5 +1,5 @@
 from .account import Account
-from .expense import Category, Expense
+from .transaction import Category, Transaction
 from .user import User
 
-__all__ = ["Account", "Category", "Expense", "User"]
+__all__ = ["Account", "Category", "Transaction", "User"]

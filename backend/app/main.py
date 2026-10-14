@@ -3,12 +3,12 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from .database import get_db
-from .routers import accounts, auth, expenses
+from .routers import accounts, auth, transactions
 
 app = FastAPI(title="Expense Tracker API")
 app.include_router(auth.router)
 app.include_router(accounts.router)
-app.include_router(expenses.router)
+app.include_router(transactions.router)
 
 
 @app.get("/api/health")

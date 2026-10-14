@@ -39,3 +39,5 @@ def delete_account(
         svc.delete_account(db, user.id, account_id)
     except svc.NotFound:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Account not found")
+    except svc.AccountInUse:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Account has transactions")

@@ -7,18 +7,18 @@ import { RequireAuth } from "../auth/RequireAuth";
 import { server } from "../test/server";
 import { loginMutationKey } from "./auth";
 import { ApiError } from "./client";
-import { useExpenses } from "./expenses";
+import { useTransactions } from "./transactions";
 import { createQueryClient } from "./queryClient";
 
-function ExpenseCount() {
-  const expenses = useExpenses();
-  return <p>{expenses.data ? `${expenses.data.length} expenses` : "loading"}</p>;
+function TransactionCount() {
+  const transactions = useTransactions();
+  return <p>{transactions.data ? `${transactions.data.length} transactions` : "loading"}</p>;
 }
 
 function renderProtected() {
   const router = createMemoryRouter(
     [
-      { element: <RequireAuth />, children: [{ path: "/", element: <ExpenseCount /> }] },
+      { element: <RequireAuth />, children: [{ path: "/", element: <TransactionCount /> }] },
       { path: "/login", element: <p>login page</p> },
     ],
     { initialEntries: ["/"] },
@@ -49,7 +49,7 @@ describe("createQueryClient", () => {
         meCalls += 1;
         return meCalls === 1 ? HttpResponse.json({ id: 1, email: "chris@example.com" }) : unauthorized();
       }),
-      http.get("/api/expenses", unauthorized),
+      http.get("/api/transactions", unauthorized),
     );
 
     renderProtected();

@@ -2,7 +2,7 @@ import { NavLink } from "react-router-dom";
 import { GridIcon, ListIcon, PieIcon, WalletIcon } from "./icons";
 
 const TABS = [
-  { to: "/", label: "Expenses", Icon: ListIcon, end: true },
+  { to: "/", label: "Transactions", Icon: ListIcon, end: true },
   { to: "/summary", label: "Summary", Icon: PieIcon, end: false },
   { to: "/categories", label: "Categories", Icon: GridIcon, end: false },
   { to: "/accounts", label: "Accounts", Icon: WalletIcon, end: false },
