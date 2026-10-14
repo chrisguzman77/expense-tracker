@@ -67,6 +67,9 @@ export function AccountDetailPage() {
               <TransactionList transactions={transactions.data} emptyMessage="No transactions in this account yet." />
             )}
           </section>
+          <Button variant="secondary" onClick={() => navigate(`/accounts/${account.id}/edit`)} className="w-full">
+            Edit account
+          </Button>
           {removeError && (
             <p role="alert" className="text-sm text-danger">
               {removeError}

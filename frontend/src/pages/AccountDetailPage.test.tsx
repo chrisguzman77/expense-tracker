@@ -33,6 +33,7 @@ function renderPage(path: string) {
   const router = createMemoryRouter(
     [
       { path: "/accounts/:id", element: <AccountDetailPage /> },
+      { path: "/accounts/:id/edit", element: <p>edit screen</p> },
       { path: "/accounts", element: <p>accounts tab</p> },
     ],
     { initialEntries: [path] },
@@ -46,6 +47,15 @@ function renderPage(path: string) {
 }
 
 describe("AccountDetailPage", () => {
+  it("opens the edit screen", async () => {
+    fakeApi();
+    renderPage("/accounts/1");
+
+    await userEvent.setup().click(await screen.findByRole("button", { name: "Edit account" }));
+
+    expect(await screen.findByText("edit screen")).toBeInTheDocument();
+  });
+
   it("lists the account's transactions", async () => {
     const { requested } = fakeApi({
       transactions: [{ id: 10, amount: "-12.50", occurred_on: "2026-10-10", note: "Lunch", category: food, account: wells }],

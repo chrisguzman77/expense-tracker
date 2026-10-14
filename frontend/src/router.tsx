@@ -4,6 +4,7 @@ import { RequireAuth } from "./auth/RequireAuth";
 import { AccountDetailPage } from "./pages/AccountDetailPage";
 import { AccountsPage } from "./pages/AccountsPage";
 import { CategoriesPage } from "./pages/CategoriesPage";
+import { EditAccountPage } from "./pages/EditAccountPage";
 import { EditCategoryPage } from "./pages/EditCategoryPage";
 import { EditTransactionPage } from "./pages/EditTransactionPage";
 import { LoginPage } from "./pages/LoginPage";
@@ -40,6 +41,7 @@ export const router = createBrowserRouter([
       { path: "/categories/:id/edit", element: <EditCategoryPage /> },
       { path: "/accounts/new", element: <NewAccountPage /> },
       { path: "/accounts/:id", element: <AccountDetailPage /> },
+      { path: "/accounts/:id/edit", element: <EditAccountPage /> },
       { path: "/settings", element: <SettingsPage /> },
     ],
   },
