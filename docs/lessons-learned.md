@@ -108,6 +108,18 @@ and the takeaway. Newest last. Design decisions themselves are in [decisions/](d
 - *Takeaway:* "the existing frontend keeps working" holds at runtime but not at compile time
   when a field with a default is added; plan for the frontend to send it.
 
+**The plan put a helper in a component file** (piece 3a, 2026-10-14)
+- *What happened:* the plan exported `groupCategories` from the new `TransactionForm.tsx`.
+  ESLint's `react-refresh/only-export-components` rejected it, and the implementation switched
+  the rule off for that line.
+- *Why the rule exists:* hot reload can only swap a module in place when it exports nothing
+  but components; a plain function export forces a full reload.
+- *Fix:* helpers live in `src/lib/` (or stay private to their one user), and component files
+  export only components and types. The plan was updated before the next task, which would
+  have needed a second exception.
+- *Takeaway:* a lint suppression is a design question. Ask why the rule fires before
+  silencing it.
+
 ## Local development
 
 **Ports already taken by other projects** (2026-10-02 and 2026-10-06)

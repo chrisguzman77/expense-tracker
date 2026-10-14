@@ -1,7 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
-import { type Category, useCreateCategory } from "../api/categories";
+import { type Category, useCreateCategory, useUpdateCategory } from "../api/categories";
 import { Button } from "../components/Button";
 import { CategoryChip } from "../components/CategoryChip";
 import { Field } from "../components/Field";
@@ -27,24 +27,40 @@ type FormValues = z.infer<typeof schema>;
 
 const DEFAULTS: FormValues = { name: "", icon: "🏷️", color: "amber", kind: "spending" };
 
-export function CategoryForm({ onCreated }: { onCreated?: (category: Category) => void }) {
+type Props = {
+  // Set when editing: the form starts from it and saves with PUT.
+  category?: Category;
+  onSaved?: (category: Category) => void;
+};
+
+export function CategoryForm({ category, onSaved }: Props) {
   const create = useCreateCategory();
+  const update = useUpdateCategory();
+  const save = category ? update : create;
   const {
     register,
     handleSubmit,
     reset,
     control,
     formState: { errors, isSubmitting },
-  } = useForm<FormValues>({ resolver: zodResolver(schema), defaultValues: DEFAULTS });
+  } = useForm<FormValues>({
+    resolver: zodResolver(schema),
+    defaultValues: category
+      ? { name: category.name, icon: category.icon, color: category.color, kind: category.kind }
+      : DEFAULTS,
+  });
   const [icon, color] = useWatch({ control, name: ["icon", "color"] });
 
   const onSubmit = handleSubmit(async (values) => {
     try {
-      const created = await create.mutateAsync(values);
-      reset(DEFAULTS);
-      onCreated?.(created);
+      const saved = category
+        ? await update.mutateAsync({ id: category.id, body: values })
+        : await create.mutateAsync(values);
+      // The Categories tab keeps this form on screen to add another.
+      if (!category) reset(DEFAULTS);
+      onSaved?.(saved);
     } catch {
-      // Shown below via create.error
+      // Shown below via save.error
     }
   });
 
@@ -81,13 +97,14 @@ export function CategoryForm({ onCreated }: { onCreated?: (category: Category) =
         options={CATEGORY_KINDS.map((kind) => ({ value: kind, label: kindLabel(kind) }))}
         field={register("kind")}
       />
-      {create.isError && (
+      {category && <p className="text-sm text-muted">Changing the kind also changes past months in the summary.</p>}
+      {save.error && (
         <p role="alert" className="text-sm text-danger">
-          {create.error.message}
+          {save.error.message}
         </p>
       )}
       <Button type="submit" disabled={isSubmitting} className="w-full">
-        Add category
+        {category ? "Save" : "Add category"}
       </Button>
     </form>
   );

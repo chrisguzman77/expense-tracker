@@ -397,3 +397,75 @@ def test_flipping_a_sign_changes_the_summary(client):
     assert put(client, txn["id"], account, clothes, "50.00").status_code == 200
 
     assert totals(client) == {"Clothes": "-50.00"}
+
+
+def test_edit_category_changes_name_color_icon_and_kind(client):
+    signup(client, "a@b.com")
+    food = make_category(client, "Food", color="amber", icon="🍔")
+    add(client, make_account(client), food, "-3.00")
+
+    r = client.put(
+        f"/api/categories/{food}",
+        json={"name": "Groceries", "color": "emerald", "icon": "🛒", "kind": "income"},
+    )
+
+    assert r.status_code == 200, r.text
+    edited = r.json()
+    assert edited == {
+        "id": food,
+        "name": "Groceries",
+        "color": "emerald",
+        "icon": "🛒",
+        "kind": "income",
+    }
+    assert client.get("/api/categories").json() == [edited]
+    assert client.get("/api/transactions").json()[0]["category"] == edited
+
+
+def test_category_can_be_saved_under_its_own_name(client):
+    signup(client, "a@b.com")
+    food = make_category(client, "Food")
+    r = client.put(f"/api/categories/{food}", json={"name": "Food", "color": "sky"})
+    assert r.status_code == 200, r.text
+    assert r.json()["color"] == "sky"
+
+
+def test_renaming_a_category_to_a_taken_name_is_409(client):
+    signup(client, "a@b.com")
+    make_category(client, "Food")
+    rent = make_category(client, "Rent")
+
+    r = client.put(f"/api/categories/{rent}", json={"name": "Food"})
+
+    assert r.status_code == 409
+    assert r.json() == {"detail": "Category name taken"}
+    # The failed update's rollback must not discard anything.
+    assert [c["name"] for c in client.get("/api/categories").json()] == ["Food", "Rent"]
+
+
+def test_cannot_edit_another_users_category(client):
+    signup(client, "a@b.com")
+    food = make_category(client, "Food")
+    client.post("/api/auth/logout")
+
+    signup(client, "c@d.com")
+    r = client.put(f"/api/categories/{food}", json={"name": "Mine"})
+    assert r.status_code == 404
+    assert r.json() == {"detail": "Category not found"}
+
+
+def test_changing_a_kind_removes_the_category_from_past_summaries(client):
+    signup(client, "a@b.com")
+    account = make_account(client)
+    payment = make_category(client, "Card payment")
+    food = make_category(client, "Food")
+    add(client, account, payment, "-300.00", on="2026-07-15")
+    add(client, account, food, "-10.00", on="2026-07-16")
+    assert totals(client, month=7) == {"Card payment": "300.00", "Food": "10.00"}
+
+    r = client.put(
+        f"/api/categories/{payment}", json={"name": "Card payment", "kind": "transfer"}
+    )
+
+    assert r.status_code == 200, r.text
+    assert totals(client, month=7) == {"Food": "10.00"}

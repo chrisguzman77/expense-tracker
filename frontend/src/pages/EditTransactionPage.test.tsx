@@ -132,6 +132,7 @@ describe("EditTransactionPage", () => {
     renderPage("/transactions/99/edit");
 
     expect(await screen.findByText("Transaction not found")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Back" })).toHaveAttribute("href", "/");
   });
 
   it("shows an error when a list fails to load", async () => {

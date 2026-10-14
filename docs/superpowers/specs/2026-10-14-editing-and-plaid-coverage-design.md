@@ -126,7 +126,9 @@ Same layering as today: thin routers, services raising domain exceptions, every 
 to the current user, "not yours" returning 404.
 
 Each endpoint takes the same body as the matching create, reusing the existing `*Create`
-schema rather than a copy, and returns 200 with the usual read shape.
+schema rather than a copy, and returns 200 with the usual read shape. A PUT replaces the whole record:
+a field left out takes the create default (for a category, a missing `kind` becomes
+`spending`). The app's forms always send every field.
 
 - **`PUT /api/transactions/{id}`** takes `TransactionCreate`: `{account_id, category_id,
   amount, occurred_on, note}`.

@@ -40,6 +40,23 @@ def create_category(
         raise HTTPException(status.HTTP_409_CONFLICT, "Category name taken")
 
 
+@router.put("/categories/{category_id}", response_model=CategoryRead)
+def update_category(
+    category_id: int,
+    body: CategoryCreate,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    try:
+        return svc.update_category(
+            db, user.id, category_id, body.name, body.color, body.icon, body.kind
+        )
+    except svc.NotFound:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Category not found")
+    except svc.NameTaken:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Category name taken")
+
+
 @router.delete("/categories/{category_id}", status_code=204)
 def delete_category(
     category_id: int,

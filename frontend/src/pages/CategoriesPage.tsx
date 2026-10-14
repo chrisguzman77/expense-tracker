@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { useCategories, useDeleteCategory } from "../api/categories";
 import { Card } from "../components/Card";
 import { CategoryChip } from "../components/CategoryChip";
@@ -37,11 +38,17 @@ export function CategoriesPage() {
             <ul aria-label="Categories" className="divide-y divide-line">
               {categories.data.map((c) => (
                 <li key={c.id} className="flex min-h-14 items-center gap-3 px-3 py-2">
-                  <CategoryChip category={c} />
-                  <span className="min-w-0 flex-1 truncate font-semibold">{c.name}</span>
-                  {c.kind !== "spending" && (
-                    <span className="rounded-full bg-app px-2 py-0.5 text-xs font-medium text-muted">{kindLabel(c.kind)}</span>
-                  )}
+                  <Link
+                    to={`/categories/${c.id}/edit`}
+                    aria-label={`Edit ${c.name}`}
+                    className="flex min-h-11 min-w-0 flex-1 items-center gap-3"
+                  >
+                    <CategoryChip category={c} />
+                    <span className="min-w-0 flex-1 truncate font-semibold">{c.name}</span>
+                    {c.kind !== "spending" && (
+                      <span className="rounded-full bg-app px-2 py-0.5 text-xs font-medium text-muted">{kindLabel(c.kind)}</span>
+                    )}
+                  </Link>
                   <button
                     type="button"
                     onClick={() => remove.mutate(c.id)}
