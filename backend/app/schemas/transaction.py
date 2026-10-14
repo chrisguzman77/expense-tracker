@@ -21,6 +21,10 @@ CategoryColor = Literal[
     "slate",
 ]
 
+# Only spending categories count toward spending; income and transfer are
+# kept out of it (record 21).
+CategoryKind = Literal["spending", "income", "transfer"]
+
 
 class CategoryCreate(BaseModel):
     name: str = Field(min_length=1, max_length=50)
@@ -28,6 +32,7 @@ class CategoryCreate(BaseModel):
     # Any short text; not checked to be an emoji (that needs a Unicode library).
     # 16 code points leaves room for multi-part emoji such as 👨‍👩‍👧.
     icon: str = Field(default="🏷️", min_length=1, max_length=16)
+    kind: CategoryKind = "spending"
 
 
 class CategoryRead(BaseModel):
@@ -36,6 +41,7 @@ class CategoryRead(BaseModel):
     name: str
     color: CategoryColor
     icon: str
+    kind: CategoryKind
 
 
 class TransactionCreate(BaseModel):

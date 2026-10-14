@@ -13,8 +13,8 @@ import { NewTransactionPage } from "./NewTransactionPage";
 describe("creating a category from the new-transaction screen", () => {
   it("comes back with the new category selected and saves the transaction under it", async () => {
     const categories = [
-      { id: 1, name: "Food", color: "amber", icon: "🍔" },
-      { id: 2, name: "Rent", color: "sky", icon: "🏠" },
+      { id: 1, name: "Food", color: "amber", icon: "🍔", kind: "spending" },
+      { id: 2, name: "Rent", color: "sky", icon: "🏠", kind: "spending" },
     ];
     const wallet = { id: 1, name: "Wallet", type: "cash" };
     const posted: { category_id: number }[] = [];
@@ -22,7 +22,7 @@ describe("creating a category from the new-transaction screen", () => {
       http.get("/api/categories", () => HttpResponse.json(categories)),
       http.get("/api/accounts", () => HttpResponse.json([wallet])),
       http.post("/api/categories", async ({ request }) => {
-        const row = { id: 7, ...((await request.json()) as { name: string; color: string; icon: string }) };
+        const row = { id: 7, ...((await request.json()) as { name: string; color: string; icon: string; kind: string }) };
         categories.push(row);
         return HttpResponse.json(row, { status: 201 });
       }),

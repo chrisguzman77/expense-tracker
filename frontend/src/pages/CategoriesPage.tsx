@@ -3,6 +3,7 @@ import { Card } from "../components/Card";
 import { CategoryChip } from "../components/CategoryChip";
 import { GradientHeader } from "../components/GradientHeader";
 import { TrashIcon } from "../components/icons";
+import { kindLabel } from "../lib/categoryKinds";
 import { CategoryForm } from "./CategoryForm";
 
 export function CategoriesPage() {
@@ -38,6 +39,9 @@ export function CategoriesPage() {
                 <li key={c.id} className="flex min-h-14 items-center gap-3 px-3 py-2">
                   <CategoryChip category={c} />
                   <span className="min-w-0 flex-1 truncate font-semibold">{c.name}</span>
+                  {c.kind !== "spending" && (
+                    <span className="rounded-full bg-app px-2 py-0.5 text-xs font-medium text-muted">{kindLabel(c.kind)}</span>
+                  )}
                   <button
                     type="button"
                     onClick={() => remove.mutate(c.id)}

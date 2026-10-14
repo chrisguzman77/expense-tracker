@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
 import { server } from "../test/server";
 import { TransactionDetailPage } from "./TransactionDetailPage";
 
-const food = { id: 1, name: "Food", color: "amber", icon: "🍔" };
+const food = { id: 1, name: "Food", color: "amber", icon: "🍔", kind: "spending" };
 
 function fakeApi() {
   const rows = [{ id: 10, amount: "-12.50", occurred_on: "2026-10-10", note: "Lunch", category: food, account: { id: 1, name: "Wallet", type: "cash" } }];

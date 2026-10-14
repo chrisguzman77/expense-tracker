@@ -269,6 +269,12 @@ export interface components {
              * @default 🏷️
              */
             icon: string;
+            /**
+             * Kind
+             * @default spending
+             * @enum {string}
+             */
+            kind: "spending" | "income" | "transfer";
         };
         /** CategoryRead */
         CategoryRead: {
@@ -283,6 +289,11 @@ export interface components {
             color: "amber" | "emerald" | "sky" | "violet" | "rose" | "orange" | "teal" | "indigo" | "lime" | "slate";
             /** Icon */
             icon: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "spending" | "income" | "transfer";
         };
         /** CategorySummary */
         CategorySummary: {

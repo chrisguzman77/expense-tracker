@@ -9,7 +9,7 @@ import { AccountDetailPage } from "./AccountDetailPage";
 
 const wells = { id: 1, name: "Wells Fargo", type: "checking" };
 
-const food = { id: 1, name: "Food", color: "amber", icon: "🍔" };
+const food = { id: 1, name: "Food", color: "amber", icon: "🍔", kind: "spending" };
 
 function fakeApi({ inUse = false, transactions = [] as object[] } = {}) {
   const deleted: number[] = [];

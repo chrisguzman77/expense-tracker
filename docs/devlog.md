@@ -250,3 +250,44 @@ before sending, and login treats a longer password as simply wrong. Tests first,
 with 19 emoji: 19 characters, 76 bytes.
 
 **Next:** accounts and transactions with CSV import.
+
+## 2026-10-14 — Accounts, money in, and category kinds
+
+Started piece 2 of the roadmap and split it first: accounts and transactions now (2a), CSV
+import later (2b). Each half is about the size of the redesign, and 2a can go live before
+import exists.
+
+The design questions were about money coming in, which real bank data is full of: refunds,
+paychecks, and card payments that show up on two accounts at once
+([decision 21](decisions/0021-accounts-signed-transactions-and-category-kinds.md)):
+
+- One signed amount, negative for money out, as on a bank statement. Spending is minus the
+  sum, so a $20 return cancels part of a $50 purchase.
+- Every category has a kind: spending, income or transfer. Only spending is summed, so a
+  paycheck or a card payment filed under the right category stays out of the totals.
+- Every transaction belongs to an account (a name and a type, no balance yet), and "expenses"
+  became "transactions" everywhere. Accounts get a fourth tab.
+
+Production had no expenses yet, but the migration still moves existing rows properly (my local
+data has some): it renames the table and everything Postgres leaves behind on a rename (the id
+sequence, the constraints, the index), puts each user's rows in a "Cash" account, and flips
+their sign. A test runs it against a scratch database: upgrade, downgrade, upgrade again, a user
+who already had a "Cash" account, and two users with a decoy account.
+
+Three pull requests (#35, #36, #37), each task built and reviewed by separate
+agents. Things caught along the way:
+
+- A new test printed one unfamiliar warning. It turned out a rollback in the code under test
+  was also undoing the test's own setup, so the test was checking less than it seemed
+  ([lessons](lessons-learned.md#backend)).
+- While planning: once refunds exist, the Summary page could show a category at 167%.
+- The whole-branch review noticed the migration test only used one user, so it couldn't catch
+  rows landing in someone else's account. Now it uses two, and fails if the per-user condition
+  is removed.
+- CI caught what every review missed: the monthly restore drill on the server checks that a
+  restored backup contains an `expenses` table. After this release it would have failed every
+  month, and it would have blocked publishing the images
+  ([lessons](lessons-learned.md#backups)).
+
+**Next:** land 2a (backup first: three migrations), reload the home-screen app, create my real
+accounts; then CSV import.

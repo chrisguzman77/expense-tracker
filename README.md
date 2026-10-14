@@ -1,10 +1,10 @@
 # Expense Tracker
 
-A self-hosted personal finance app: track spending by category and see monthly summaries.
+A self-hosted personal finance app: track money in and out across accounts, with income and
+transfers kept out of the spending totals, and see monthly summaries by category.
 Built as an end-to-end practice project covering scoping, architecture, tests, CI and deployment.
 
-**Roadmap:** accounts and transactions with CSV import, bank sync, budgets, and detection of
-forgotten subscriptions.
+**Roadmap:** CSV import, bank sync, detection of forgotten subscriptions, and budgets.
 
 ## Stack
 

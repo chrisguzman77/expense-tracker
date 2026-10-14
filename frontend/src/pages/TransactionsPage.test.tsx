@@ -8,7 +8,7 @@ import { localToday } from "../lib/dates";
 import { server } from "../test/server";
 import { TransactionsPage } from "./TransactionsPage";
 
-type Category = { id: number; name: string; color: string; icon: string };
+type Category = { id: number; name: string; color: string; icon: string; kind: string };
 type Account = { id: number; name: string; type: string };
 type Transaction = {
   id: number;
@@ -20,9 +20,9 @@ type Transaction = {
 };
 type SummaryRow = { category_id: number; name: string; color: string; icon: string; total: string };
 
-const food = { id: 1, name: "Food", color: "amber", icon: "🍔" };
-const rent = { id: 2, name: "Rent", color: "sky", icon: "🏠" };
-const paycheck = { id: 3, name: "Paycheck", color: "emerald", icon: "💰" };
+const food = { id: 1, name: "Food", color: "amber", icon: "🍔", kind: "spending" };
+const rent = { id: 2, name: "Rent", color: "sky", icon: "🏠", kind: "spending" };
+const paycheck = { id: 3, name: "Paycheck", color: "emerald", icon: "💰", kind: "income" };
 const wallet = { id: 1, name: "Wallet", type: "cash" };
 
 const row = (c: Category, total: string): SummaryRow => ({ category_id: c.id, name: c.name, color: c.color, icon: c.icon, total });
@@ -119,7 +119,7 @@ describe("TransactionsPage", () => {
 
   describe("breakdown card", () => {
     it("lists the top categories with amounts, largest first", async () => {
-      fakeApi([], [row(rent, "900.00"), row(food, "12.50"), row({ id: 3, name: "Travel", color: "teal", icon: "✈️" }, "0")]);
+      fakeApi([], [row(rent, "900.00"), row(food, "12.50"), row({ id: 3, name: "Travel", color: "teal", icon: "✈️", kind: "spending" }, "0")]);
       renderPage();
 
       const legend = await screen.findByRole("list", { name: "Top categories" });
@@ -127,7 +127,7 @@ describe("TransactionsPage", () => {
     });
 
     it("links to Summary when there are more than four categories", async () => {
-      const cats = [1, 2, 3, 4, 5, 6].map((id) => ({ id, name: `Cat${id}`, color: "slate", icon: "🏷️" }));
+      const cats = [1, 2, 3, 4, 5, 6].map((id) => ({ id, name: `Cat${id}`, color: "slate", icon: "🏷️", kind: "spending" }));
       fakeApi([], cats.map((c, i) => row(c, `${60 - i * 10}.00`)));
       renderPage();
 
