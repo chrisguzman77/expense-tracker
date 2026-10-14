@@ -56,3 +56,5 @@ reshape is cheap now and expensive later.
 - The reshape's downgrade is lossy once money-in rows exist (they would come back as negative
   expenses, which the old API rejects); it exists for development.
 - No balances until piece 3.
+- A category's kind is chosen when it is created and can't be changed yet: categories can't be
+  edited, and one with transactions can't be deleted. Editing arrives with 2b.

@@ -266,7 +266,7 @@ paychecks, and card payments that show up on two accounts at once
 - Every category has a kind: spending, income or transfer. Only spending is summed, so a
   paycheck or a card payment filed under the right category stays out of the totals.
 - Every transaction belongs to an account (a name and a type, no balance yet), and "expenses"
-  became "transactions" everywhere, including a fourth tab for accounts.
+  became "transactions" everywhere. Accounts get a fourth tab.
 
 Production had no expenses yet, but the migration still moves existing rows properly (my local
 data has some): it renames the table and everything Postgres leaves behind on a rename (the id
