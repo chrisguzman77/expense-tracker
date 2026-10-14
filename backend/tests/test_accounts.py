@@ -28,6 +28,8 @@ def test_duplicate_account_name_is_409(client):
     r = client.post("/api/accounts", json=body)
     assert r.status_code == 409
     assert r.json() == {"detail": "Account name taken"}
+    # The failed insert's rollback must not discard the first account.
+    assert [a["name"] for a in client.get("/api/accounts").json()] == ["Wallet"]
 
 
 def test_two_users_can_use_the_same_account_name(client):
