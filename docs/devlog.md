@@ -291,3 +291,23 @@ agents. Things caught along the way:
 
 **Next:** land 2a (backup first: three migrations), reload the home-screen app, create my real
 accounts; then CSV import.
+
+## 2026-10-14 — Rolling out accounts
+
+Landed 2a in `main` (#38), took a backup (three migrations), then deployed. The rollout steps
+Claude gave me started with `git pull`, which failed with "not a git repository": the server's
+folder holds only `compose.yaml` and `.env`, and the images carry the code. The runbook already had it right
+(`docker compose pull`, then `up -d`). The `migrate` step applied all three migrations and the
+API came up healthy.
+
+Then I ran the restore drill by hand, and it failed: "table missing from restore: accounts".
+Nothing was wrong with the backup. The drill restores the newest snapshot, and the newest one
+was the backup taken just before the deploy, from before the `accounts` table existed. A fresh
+backup, then the drill again: passed. The runbook now says to back up again before a manual
+drill after a release with a migration
+([lessons](lessons-learned.md#backups)).
+
+The phone also showed "server not found" for a while, in Safari and in the home-screen app,
+then started working again. I never found the cause; Tailscale on the phone is the likeliest.
+
+**Next:** CSV import, transaction editing and duplicate detection (2b).
