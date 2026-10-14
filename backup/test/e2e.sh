@@ -103,9 +103,12 @@ http.server.HTTPServer(('', 8000), H).serve_forever()" >/dev/null
   psql_db expenses "
     insert into users (email, hashed_password) values ('e2e@example.com', 'x');
     insert into categories (user_id, name) select id, 'Food' from users;
-    insert into expenses (user_id, category_id, amount, spent_on, note)
-      select u.id, c.id, 12.50, current_date, 'seed'
-      from users u join categories c on c.user_id = u.id;" >/dev/null
+    insert into accounts (user_id, name, type) select id, 'Wallet', 'cash' from users;
+    insert into transactions (user_id, account_id, category_id, amount, occurred_on, note)
+      select u.id, a.id, c.id, -12.50, current_date, 'seed'
+      from users u
+      join accounts a on a.user_id = u.id
+      join categories c on c.user_id = u.id;" >/dev/null
   for v in "$REPO" "$EMPTY_REPO" "$HOLLOW_REPO"; do
     REPO_OVERRIDE="$v" run_backup restic init >/dev/null
   done
