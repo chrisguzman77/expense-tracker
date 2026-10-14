@@ -82,6 +82,23 @@ def create_transaction(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Category not found")
 
 
+@router.put("/transactions/{transaction_id}", response_model=TransactionRead)
+def update_transaction(
+    transaction_id: int,
+    body: TransactionCreate,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    try:
+        return svc.update_transaction(db, user.id, transaction_id, body)
+    except svc.TransactionNotFound:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Transaction not found")
+    except account_svc.NotFound:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Account not found")
+    except svc.NotFound:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Category not found")
+
+
 @router.delete("/transactions/{transaction_id}", status_code=204)
 def delete_transaction(
     transaction_id: int,
@@ -90,7 +107,7 @@ def delete_transaction(
 ):
     try:
         svc.delete_transaction(db, user.id, transaction_id)
-    except svc.NotFound:
+    except svc.TransactionNotFound:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Transaction not found")
 
 
