@@ -9,7 +9,7 @@ import { Field } from "../components/Field";
 import { Segmented } from "../components/Segmented";
 import { inputClass } from "../components/styles";
 import { accountTypeIcon } from "../lib/accountTypes";
-import { CATEGORY_KINDS, kindLabel } from "../lib/categoryKinds";
+import { groupCategories, kindLabel } from "../lib/categoryKinds";
 import { addDays, localToday } from "../lib/dates";
 
 const DIRECTIONS = [
@@ -40,12 +40,6 @@ export type TransactionFormValues = z.infer<typeof schema>;
 
 // Form values carried to the new-category screen and back, so nothing typed is lost.
 export type TransactionDraft = Partial<TransactionFormValues>;
-
-// Grouped by kind, spending first: the order the category select shows them in.
-// eslint-disable-next-line react-refresh/only-export-components -- a pure helper shared with NewTransactionPage; only affects HMR
-export function groupCategories(categories: Category[]) {
-  return CATEGORY_KINDS.map((kind) => ({ kind, items: categories.filter((c) => c.kind === kind) }));
-}
 
 type Props = {
   accounts: Account[];

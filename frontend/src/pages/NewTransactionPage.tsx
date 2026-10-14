@@ -4,8 +4,9 @@ import { type Account, useAccounts } from "../api/accounts";
 import { type Category, useCategories } from "../api/categories";
 import { Card } from "../components/Card";
 import { Screen } from "../components/Screen";
+import { groupCategories } from "../lib/categoryKinds";
 import { localToday } from "../lib/dates";
-import { groupCategories, type TransactionDraft, TransactionForm } from "./TransactionForm";
+import { type TransactionDraft, TransactionForm } from "./TransactionForm";
 
 type LocationState = { draft?: TransactionDraft; categoryId?: number } | null;
 
