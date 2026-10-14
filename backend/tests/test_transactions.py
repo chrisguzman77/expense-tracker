@@ -273,6 +273,7 @@ def test_summary_counts_only_spending_categories(client):
     food = make_category(client, "Food")
     paycheck = make_category(client, "Paycheck", kind="income")
     card_payment = make_category(client, "Card payment", kind="transfer")
+    make_category(client, "Bonus", kind="income")  # unused: still excluded
     add(client, account, food, "-10.00", on="2026-08-03")
     add(client, account, paycheck, "2000.00", on="2026-08-01")
     add(client, account, card_payment, "-500.00", on="2026-08-05")
