@@ -74,7 +74,7 @@ describe("TransactionsPage", () => {
     renderPage();
 
     const today = await screen.findByRole("region", { name: "Today" });
-    expect(within(today).getByRole("link", { name: /lunch/i })).toHaveTextContent(/Food.*Lunch.*\$12\.50/);
+    expect(within(today).getByRole("link", { name: /lunch/i })).toHaveTextContent(/Food.*Wallet · Lunch.*\$12\.50/);
     const older = screen.getByRole("region", { name: "Mar 5, 2025" });
     expect(within(older).getByRole("link", { name: /rent/i })).toHaveTextContent("$900.00");
   });

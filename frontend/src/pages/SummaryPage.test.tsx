@@ -81,4 +81,26 @@ describe("SummaryPage", () => {
 
     expect(await screen.findByText(`No spending in ${monthLabel(currentMonthValue())}`)).toBeInTheDocument();
   });
+
+  it("computes shares from spending only, so a refund can't push a category past 100%", async () => {
+    fakeSummary([
+      { category_id: 2, name: "Food", color: "amber", icon: "🍔", total: "50.00" },
+      { category_id: 4, name: "Clothes", color: "rose", icon: "👕", total: "-20.00" },
+    ]);
+    renderPage();
+
+    expect(await screen.findByText("$30.00")).toBeInTheDocument();
+    const list = screen.getByRole("list", { name: "Categories this month" });
+    expect(within(list).getAllByRole("listitem").map((li) => li.textContent)).toEqual([
+      "🍔Food$50.00100%",
+      "👕Clothes-$20.00",
+    ]);
+  });
+
+  it("lists a month that only has refunds", async () => {
+    fakeSummary([{ category_id: 4, name: "Clothes", color: "rose", icon: "👕", total: "-20.00" }]);
+    renderPage();
+
+    expect(await screen.findByRole("list", { name: "Categories this month" })).toHaveTextContent("Clothes-$20.00");
+  });
 });

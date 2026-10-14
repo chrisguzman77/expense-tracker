@@ -18,9 +18,9 @@ function groupByDay(transactions: Transaction[]): DayGroup[] {
   return groups;
 }
 
-export function TransactionList({ transactions }: { transactions: Transaction[] }) {
+export function TransactionList({ transactions, emptyMessage = "No transactions yet. Tap + to add one." }: { transactions: Transaction[]; emptyMessage?: string }) {
   if (transactions.length === 0) {
-    return <Card className="p-6 text-center text-muted">No transactions yet. Tap + to add one.</Card>;
+    return <Card className="p-6 text-center text-muted">{emptyMessage}</Card>;
   }
 
   return (
@@ -36,7 +36,9 @@ export function TransactionList({ transactions }: { transactions: Transaction[] 
                     <CategoryChip category={t.category} />
                     <span className="min-w-0 flex-1">
                       <span className="block font-semibold">{t.category.name}</span>
-                      {t.note && <span className="block truncate text-sm text-muted">{t.note}</span>}
+                      <span className="block truncate text-sm text-muted">
+                        {[t.account.name, t.note].filter(Boolean).join(" · ")}
+                      </span>
                     </span>
                     <TransactionAmount amount={t.amount} className="font-bold" />
                   </Link>

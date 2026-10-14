@@ -16,10 +16,12 @@ function invalidateTransactionData(queryClient: QueryClient) {
   ]);
 }
 
-export function useTransactions() {
+// Without an id: every transaction. With one: that account's. Both keys start
+// with transactionsQueryKey, so creating or deleting a transaction refreshes both.
+export function useTransactions(accountId?: number) {
   return useQuery({
-    queryKey: transactionsQueryKey,
-    queryFn: () => unwrap(api.GET("/api/transactions")),
+    queryKey: accountId === undefined ? transactionsQueryKey : [...transactionsQueryKey, { accountId }],
+    queryFn: () => unwrap(api.GET("/api/transactions", { params: { query: { account_id: accountId } } })),
   });
 }
 

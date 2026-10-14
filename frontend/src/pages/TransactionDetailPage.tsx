@@ -46,6 +46,8 @@ export function TransactionDetailPage() {
             <dl className="grid grid-cols-[5rem_1fr] gap-y-3 text-sm">
               <dt className="text-muted">Date</dt>
               <dd>{longDate(transaction.occurred_on)}</dd>
+              <dt className="text-muted">Account</dt>
+              <dd>{transaction.account.name}</dd>
               <dt className="text-muted">Note</dt>
               <dd className="break-words">{transaction.note || "—"}</dd>
             </dl>
