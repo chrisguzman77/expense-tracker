@@ -53,7 +53,7 @@ describe("AppLayout", () => {
 
     expect(await screen.findByText("home content")).toBeInTheDocument();
     const tabs = screen.getByRole("navigation", { name: "Tab bar" });
-    expect(within(tabs).getAllByRole("link").map((l) => l.textContent)).toEqual(["Expenses", "Summary", "Categories", "Accounts"]);
+    expect(within(tabs).getAllByRole("link").map((l) => l.textContent)).toEqual(["Transactions", "Summary", "Categories", "Accounts"]);
   });
 
   it("switches tabs from the tab bar", async () => {
@@ -80,6 +80,6 @@ describe("AppLayout", () => {
     renderLayout();
 
     const top = await screen.findByRole("navigation", { name: "Top navigation" });
-    expect(within(top).getAllByRole("link").map((l) => l.textContent)).toEqual(["Expenses", "Summary", "Categories", "Accounts"]);
+    expect(within(top).getAllByRole("link").map((l) => l.textContent)).toEqual(["Transactions", "Summary", "Categories", "Accounts"]);
   });
 });

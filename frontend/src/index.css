@@ -12,6 +12,7 @@
   --app-line: #e2e8f0;
   --app-accent: #4f46e5;
   --app-danger: #dc2626;
+  --app-income: #047857;
 
   /* Category palette; names must match CategoryColor in the API. */
   --cat-amber: #f59e0b;
@@ -35,6 +36,7 @@
   --app-line: #26304a;
   --app-accent: #a5b4fc;
   --app-danger: #f87171;
+  --app-income: #34d399;
 
   --cat-amber: #d97706;
   --cat-emerald: #059669;
@@ -56,6 +58,7 @@
   --color-line: var(--app-line);
   --color-accent: var(--app-accent);
   --color-danger: var(--app-danger);
+  --color-income: var(--app-income);
 }
 
 @utility bg-brand {

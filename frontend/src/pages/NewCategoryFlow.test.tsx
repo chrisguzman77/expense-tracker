@@ -6,40 +6,42 @@ import { createMemoryRouter, RouterProvider } from "react-router-dom";
 import { describe, expect, it } from "vitest";
 import { server } from "../test/server";
 import { NewCategoryPage } from "./NewCategoryPage";
-import { NewExpensePage } from "./NewExpensePage";
+import { NewTransactionPage } from "./NewTransactionPage";
 
 // Crosses both screens with one QueryClient: per-page tests each start from a
 // fresh fetch and cannot see a stale cached category list.
-describe("creating a category from the new-expense screen", () => {
-  it("comes back with the new category selected and saves the expense under it", async () => {
+describe("creating a category from the new-transaction screen", () => {
+  it("comes back with the new category selected and saves the transaction under it", async () => {
     const categories = [
       { id: 1, name: "Food", color: "amber", icon: "🍔" },
       { id: 2, name: "Rent", color: "sky", icon: "🏠" },
     ];
+    const wallet = { id: 1, name: "Wallet", type: "cash" };
     const posted: { category_id: number }[] = [];
     server.use(
       http.get("/api/categories", () => HttpResponse.json(categories)),
+      http.get("/api/accounts", () => HttpResponse.json([wallet])),
       http.post("/api/categories", async ({ request }) => {
         const row = { id: 7, ...((await request.json()) as { name: string; color: string; icon: string }) };
         categories.push(row);
         return HttpResponse.json(row, { status: 201 });
       }),
-      http.post("/api/expenses", async ({ request }) => {
+      http.post("/api/transactions", async ({ request }) => {
         const body = (await request.json()) as { category_id: number };
         posted.push(body);
         return HttpResponse.json(
-          { id: 50, ...body, category: categories.find((c) => c.id === body.category_id) },
+          { id: 50, ...body, category: categories.find((c) => c.id === body.category_id), account: wallet },
           { status: 201 },
         );
       }),
     );
     const router = createMemoryRouter(
       [
-        { path: "/", element: <p>expenses list</p> },
-        { path: "/expenses/new", element: <NewExpensePage /> },
+        { path: "/", element: <p>transactions list</p> },
+        { path: "/transactions/new", element: <NewTransactionPage /> },
         { path: "/categories/new", element: <NewCategoryPage /> },
       ],
-      { initialEntries: ["/expenses/new"] },
+      { initialEntries: ["/transactions/new"] },
     );
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     render(
@@ -59,8 +61,8 @@ describe("creating a category from the new-expense screen", () => {
     expect(select).toHaveValue("7");
     expect(select.selectedOptions[0].textContent).toContain("Travel");
 
-    await user.click(screen.getByRole("button", { name: "Add expense" }));
-    expect(await screen.findByText("expenses list")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Add transaction" }));
+    expect(await screen.findByText("transactions list")).toBeInTheDocument();
     expect(posted).toEqual([expect.objectContaining({ category_id: 7 })]);
   });
 });

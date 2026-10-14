@@ -6,20 +6,30 @@ import { createMemoryRouter, RouterProvider, useParams } from "react-router-dom"
 import { describe, expect, it } from "vitest";
 import { localToday } from "../lib/dates";
 import { server } from "../test/server";
-import { ExpensesPage } from "./ExpensesPage";
+import { TransactionsPage } from "./TransactionsPage";
 
 type Category = { id: number; name: string; color: string; icon: string };
-type Expense = { id: number; amount: string; spent_on: string; note: string | null; category: Category };
+type Account = { id: number; name: string; type: string };
+type Transaction = {
+  id: number;
+  amount: string;
+  occurred_on: string;
+  note: string | null;
+  category: Category;
+  account: Account;
+};
 type SummaryRow = { category_id: number; name: string; color: string; icon: string; total: string };
 
 const food = { id: 1, name: "Food", color: "amber", icon: "🍔" };
 const rent = { id: 2, name: "Rent", color: "sky", icon: "🏠" };
+const paycheck = { id: 3, name: "Paycheck", color: "emerald", icon: "💰" };
+const wallet = { id: 1, name: "Wallet", type: "cash" };
 
 const row = (c: Category, total: string): SummaryRow => ({ category_id: c.id, name: c.name, color: c.color, icon: c.icon, total });
 
-function fakeApi(expenses: Expense[], summary: SummaryRow[]) {
+function fakeApi(transactions: Transaction[], summary: SummaryRow[]) {
   server.use(
-    http.get("/api/expenses", () => HttpResponse.json(expenses)),
+    http.get("/api/transactions", () => HttpResponse.json(transactions)),
     http.get("/api/summary", () => HttpResponse.json(summary)),
   );
 }
@@ -30,9 +40,9 @@ function Detail() {
 
 function renderPage() {
   const routes = [
-    { path: "/", element: <ExpensesPage /> },
-    { path: "/expenses/new", element: <p>new expense screen</p> },
-    { path: "/expenses/:id", element: <Detail /> },
+    { path: "/", element: <TransactionsPage /> },
+    { path: "/transactions/new", element: <p>new transaction screen</p> },
+    { path: "/transactions/:id", element: <Detail /> },
     { path: "/summary", element: <p>summary tab</p> },
   ];
   const router = createMemoryRouter(routes, { initialEntries: ["/"] });
@@ -45,7 +55,7 @@ function renderPage() {
   return render(ui);
 }
 
-describe("ExpensesPage", () => {
+describe("TransactionsPage", () => {
   it("shows this month's total in the header", async () => {
     fakeApi([], [row(rent, "900.00"), row(food, "12.50")]);
     renderPage();
@@ -53,11 +63,11 @@ describe("ExpensesPage", () => {
     expect(await screen.findByText("$912.50")).toBeInTheDocument();
   });
 
-  it("groups expenses under date headings, newest first", async () => {
+  it("groups transactions under date headings, newest first", async () => {
     fakeApi(
       [
-        { id: 11, amount: "12.50", spent_on: localToday(), note: "Lunch", category: food },
-        { id: 10, amount: "900.00", spent_on: "2025-03-05", note: null, category: rent },
+        { id: 11, amount: "-12.50", occurred_on: localToday(), note: "Lunch", category: food, account: wallet },
+        { id: 10, amount: "-900.00", occurred_on: "2025-03-05", note: null, category: rent, account: wallet },
       ],
       [],
     );
@@ -69,8 +79,21 @@ describe("ExpensesPage", () => {
     expect(within(older).getByRole("link", { name: /rent/i })).toHaveTextContent("$900.00");
   });
 
-  it("opens an expense's detail screen when its row is tapped", async () => {
-    fakeApi([{ id: 11, amount: "12.50", spent_on: localToday(), note: "Lunch", category: food }], []);
+  it("shows money in with a plus sign", async () => {
+    fakeApi(
+      [{ id: 12, amount: "2000.00", occurred_on: localToday(), note: null, category: paycheck, account: wallet }],
+      [],
+    );
+    renderPage();
+
+    expect(await screen.findByRole("link", { name: /paycheck/i })).toHaveTextContent("+$2,000.00");
+  });
+
+  it("opens a transaction's detail screen when its row is tapped", async () => {
+    fakeApi(
+      [{ id: 11, amount: "-12.50", occurred_on: localToday(), note: "Lunch", category: food, account: wallet }],
+      [],
+    );
     renderPage();
 
     await userEvent.setup().click(await screen.findByRole("link", { name: /lunch/i }));
@@ -78,20 +101,20 @@ describe("ExpensesPage", () => {
     expect(await screen.findByText("detail of 11")).toBeInTheDocument();
   });
 
-  it("opens the new expense screen from the + button", async () => {
+  it("opens the new transaction screen from the + button", async () => {
     fakeApi([], []);
     renderPage();
 
-    await userEvent.setup().click(await screen.findByRole("link", { name: "Add expense" }));
+    await userEvent.setup().click(await screen.findByRole("link", { name: "Add transaction" }));
 
-    expect(await screen.findByText("new expense screen")).toBeInTheDocument();
+    expect(await screen.findByText("new transaction screen")).toBeInTheDocument();
   });
 
-  it("says when there are no expenses", async () => {
+  it("says when there are no transactions", async () => {
     fakeApi([], []);
     renderPage();
 
-    expect(await screen.findByText(/no expenses yet/i)).toBeInTheDocument();
+    expect(await screen.findByText(/no transactions yet/i)).toBeInTheDocument();
   });
 
   describe("breakdown card", () => {
