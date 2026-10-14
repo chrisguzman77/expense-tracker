@@ -13,6 +13,7 @@ import { Screen } from "../components/Screen";
 import { Segmented } from "../components/Segmented";
 import { inputClass } from "../components/styles";
 import { accountTypeIcon } from "../lib/accountTypes";
+import { CATEGORY_KINDS, kindLabel } from "../lib/categoryKinds";
 import { addDays, localToday } from "../lib/dates";
 
 const DIRECTIONS = [
@@ -91,6 +92,9 @@ export function NewTransactionPage() {
 // Mounted only once accounts and categories have loaded, so the defaults are
 // known when the form initializes.
 function TransactionForm({ accounts, categories }: { accounts: Account[]; categories: Category[] }) {
+  // Shown grouped by kind, spending first; the default is the first one shown.
+  const groups = CATEGORY_KINDS.map((kind) => ({ kind, items: categories.filter((c) => c.kind === kind) }));
+  const firstCategory = groups.flatMap((g) => g.items)[0];
   const navigate = useNavigate();
   const state = useLocation().state as LocationState;
   const create = useCreateTransaction();
@@ -110,7 +114,7 @@ function TransactionForm({ accounts, categories }: { accounts: Account[]; catego
       note: "",
       ...state?.draft,
       // A category created mid-entry wins over the one picked before leaving.
-      category_id: String(state?.categoryId ?? (state?.draft?.category_id || categories[0].id)),
+      category_id: String(state?.categoryId ?? (state?.draft?.category_id || firstCategory.id)),
     },
   });
 
@@ -147,11 +151,17 @@ function TransactionForm({ accounts, categories }: { accounts: Account[]; catego
       </Field>
       <Field label="Category" htmlFor="category_id" error={errors.category_id?.message}>
         <select id="category_id" className={inputClass} {...register("category_id")}>
-          {categories.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.icon} {c.name}
-            </option>
-          ))}
+          {groups
+            .filter((g) => g.items.length > 0)
+            .map((g) => (
+              <optgroup key={g.kind} label={kindLabel(g.kind)}>
+                {g.items.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.icon} {c.name}
+                  </option>
+                ))}
+              </optgroup>
+            ))}
         </select>
         <button
           type="button"

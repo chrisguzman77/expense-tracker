@@ -5,7 +5,9 @@ import { type Category, useCreateCategory } from "../api/categories";
 import { Button } from "../components/Button";
 import { CategoryChip } from "../components/CategoryChip";
 import { Field } from "../components/Field";
+import { Segmented } from "../components/Segmented";
 import { inputClass } from "../components/styles";
+import { CATEGORY_KINDS, type CategoryKind, kindLabel } from "../lib/categoryKinds";
 import { CATEGORY_COLORS, type CategoryColor, colorLabel, colorVar } from "../lib/palette";
 
 // Mirrors the backend CategoryCreate schema.
@@ -19,10 +21,11 @@ const schema = z.object({
     .min(1, "Pick an emoji")
     .refine((v) => [...v].length <= 16, "Emoji must be at most 16 characters"),
   color: z.enum(CATEGORY_COLORS as [CategoryColor, ...CategoryColor[]]),
+  kind: z.enum(CATEGORY_KINDS as [CategoryKind, ...CategoryKind[]]),
 });
 type FormValues = z.infer<typeof schema>;
 
-const DEFAULTS: FormValues = { name: "", icon: "🏷️", color: "amber" };
+const DEFAULTS: FormValues = { name: "", icon: "🏷️", color: "amber", kind: "spending" };
 
 export function CategoryForm({ onCreated }: { onCreated?: (category: Category) => void }) {
   const create = useCreateCategory();
@@ -73,6 +76,11 @@ export function CategoryForm({ onCreated }: { onCreated?: (category: Category) =
           ))}
         </div>
       </fieldset>
+      <Segmented
+        legend="Kind"
+        options={CATEGORY_KINDS.map((kind) => ({ value: kind, label: kindLabel(kind) }))}
+        field={register("kind")}
+      />
       {create.isError && (
         <p role="alert" className="text-sm text-danger">
           {create.error.message}

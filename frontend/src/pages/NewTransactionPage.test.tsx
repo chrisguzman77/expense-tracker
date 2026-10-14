@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { createMemoryRouter, type InitialEntry, RouterProvider, useLocation } from "react-router-dom";
@@ -8,8 +8,8 @@ import { localToday } from "../lib/dates";
 import { server } from "../test/server";
 import { NewTransactionPage } from "./NewTransactionPage";
 
-const food = { id: 1, name: "Food", color: "amber", icon: "🍔" };
-const rent = { id: 2, name: "Rent", color: "sky", icon: "🏠" };
+const food = { id: 1, name: "Food", color: "amber", icon: "🍔", kind: "spending" };
+const rent = { id: 2, name: "Rent", color: "sky", icon: "🏠", kind: "spending" };
 const wallet = { id: 1, name: "Wallet", type: "cash" };
 const card = { id: 2, name: "Chase Freedom", type: "credit_card" };
 
@@ -142,6 +142,18 @@ describe("NewTransactionPage", () => {
     expect(screen.getByLabelText("Note")).toHaveValue("Tea");
     expect(screen.getByLabelText("Category")).toHaveValue("2");
     expect(screen.getByRole("radio", { name: "Money in" })).toBeChecked();
+  });
+
+  it("groups categories by kind, spending first", async () => {
+    const paycheck = { id: 3, name: "Paycheck", color: "emerald", icon: "💰", kind: "income" };
+    fakeApi([paycheck, food]);
+    renderPage();
+
+    const select = await screen.findByLabelText("Category");
+    expect(within(select).getByRole("group", { name: "Spending" })).toHaveTextContent("Food");
+    expect(within(select).getByRole("group", { name: "Income" })).toHaveTextContent("Paycheck");
+    // The default is the first category shown, not the first one the API returned.
+    expect(select).toHaveValue("1");
   });
 
   it("asks for a category first when there are none", async () => {
