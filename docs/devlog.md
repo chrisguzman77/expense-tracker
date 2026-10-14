@@ -274,7 +274,7 @@ sequence, the constraints, the index), puts each user's rows in a "Cash" account
 their sign. A test runs it against a scratch database: upgrade, downgrade, upgrade again, a user
 who already had a "Cash" account, and two users with a decoy account.
 
-Three pull requests (#35, #36, and one for kinds), each task built and reviewed by separate
+Three pull requests (#35, #36, #37), each task built and reviewed by separate
 agents. Things caught along the way:
 
 - A new test printed one unfamiliar warning. It turned out a rollback in the code under test
