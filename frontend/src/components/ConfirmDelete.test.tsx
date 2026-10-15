@@ -56,11 +56,12 @@ describe("ConfirmDelete", () => {
     expect(screen.getByRole("alert")).toHaveTextContent("Nope");
   });
 
-  it("disables Delete while pending", async () => {
+  it("disables Delete and Cancel while pending", async () => {
     renderIt({ pending: true });
 
     await userEvent.setup().click(screen.getByRole("button", { name: "Delete thing" }));
 
     expect(screen.getByRole("button", { name: "Delete" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Cancel" })).toBeDisabled();
   });
 });

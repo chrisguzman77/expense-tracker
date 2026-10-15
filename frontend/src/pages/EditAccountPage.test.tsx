@@ -28,6 +28,7 @@ function fakeApi({ inUse = false } = {}) {
     http.delete("/api/accounts/:id", ({ params }) => {
       deleted.push(Number(params.id));
       if (inUse) return HttpResponse.json({ detail: "Account has transactions" }, { status: 409 });
+      rows.splice(rows.findIndex((r) => r.id === Number(params.id)), 1);
       return new HttpResponse(null, { status: 204 });
     }),
   );

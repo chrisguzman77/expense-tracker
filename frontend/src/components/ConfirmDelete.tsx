@@ -33,7 +33,7 @@ export function ConfirmDelete({ label, question, onConfirm, pending, error, onCa
         <Card className="flex flex-col gap-3 p-4">
           <p className="font-medium">{question}</p>
           <div className="grid grid-cols-2 gap-3">
-            <Button variant="secondary" onClick={cancel}>
+            <Button variant="secondary" onClick={cancel} disabled={pending}>
               Cancel
             </Button>
             <Button variant="danger" onClick={onConfirm} disabled={pending}>
