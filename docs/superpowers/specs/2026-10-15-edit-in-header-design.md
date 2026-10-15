@@ -85,6 +85,9 @@ where there is one), only once the record is found.
   transactions".
 - **Navigation after delete** uses `replace: true`, as today.
 - **Delete never appears on create screens.**
+- **No "not found" flash after deleting.** A successful delete reloads the list before the
+  screen navigates away, so for a moment the record is missing. This flash was noted in 2a. The
+  edit screen shows nothing in that moment instead of "… not found".
 
 ### Lists
 
@@ -93,6 +96,7 @@ where there is one), only once the record is found.
   chevron on the right.
 - The link keeps the accessible name `Edit <name>`.
 - The trash button is removed, along with `useDeleteCategory` on that page and its error alert.
+- `TrashIcon` has no other users, so it is removed from `components/icons.tsx`.
 - The inline "New category" form at the top is unchanged.
 
 **Accounts tab:** each row gets the same chevron after the name and type.
