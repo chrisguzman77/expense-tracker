@@ -86,7 +86,8 @@ Sources and quotes go into the research note (see Docs).
    - Never use a "request production access" button.
    - Note any approval wait, and whether the sign-up asks for a company.
 2. **Search the sandbox** from your own terminal (zsh).
-   - Load the sandbox keys. Each `read` shows a prompt and doesn't echo what you type, so the
+   - Load the sandbox keys, pasting one line at a time (if pasted together, `read` takes the
+     next line as its input). Each `read` shows a prompt and doesn't echo what you type, so the
      keys stay in that shell and never reach the repo, `.env` or the chat:
      ```
      read -rs "PLAID_CLIENT_ID?Client ID: "; echo
@@ -94,12 +95,18 @@ Sources and quotes go into the research note (see Docs).
      export PLAID_CLIENT_ID PLAID_SECRET
      ```
    - Then search for the four banks. `jq` builds each request from the environment and `curl`
-     reads it from stdin, so the secret never appears in a command line (where `ps` could see it):
+     reads it from stdin, so the secret never appears in a command line (where `ps` could see
+     it). Lines end in a pipe or inside quotes, so the block survives a terminal that wraps it:
      ```
      for q in "Wells Fargo" "Chase" "Capital One" "Discover"; do
-       jq -n --arg q "$q" '{client_id: env.PLAID_CLIENT_ID, secret: env.PLAID_SECRET, query: $q, country_codes: ["US"]}' \
-         | curl -s https://sandbox.plaid.com/institutions/search -H 'Content-Type: application/json' -d @- \
-         | jq 'if .institutions then [.institutions[] | {institution_id, name, oauth, products}] else {error_code, error_message} end'
+       jq -n --arg q "$q" '{client_id: env.PLAID_CLIENT_ID,
+         secret: env.PLAID_SECRET, query: $q,
+         country_codes: ["US"]}' |
+       curl -s https://sandbox.plaid.com/institutions/search \
+         -H 'Content-Type: application/json' -d @- |
+       jq '.institutions // . | if type == "array"
+         then map({institution_id, name, oauth, products})
+         else {error_code, error_message} end'
      done
      ```
      There is no product filter, so a bank without Transactions still shows up, with its

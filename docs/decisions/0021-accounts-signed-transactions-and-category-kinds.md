@@ -1,7 +1,8 @@
 # 21. Accounts, signed transactions and category kinds
 
 - **Date:** 2026-10-14
-- **Status:** Accepted (refines piece 2 of [record 13](0013-personal-finance-roadmap.md))
+- **Status:** Accepted (refines piece 2 of [record 13](0013-personal-finance-roadmap.md)); the
+  2b half amended by [record 22](0022-plaid-for-bank-sync.md)
 
 ## Context
 
