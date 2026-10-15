@@ -354,3 +354,25 @@ caught along the way:
   moving up before connecting accounts.
 
 **Next:** run the coverage check against Plaid's sandbox; then connecting accounts (3b).
+
+## 2026-10-15 — Plaid checks out
+
+Ran the coverage check that decision 19 asked for before building on Plaid
+([research note](research/plaid-coverage.md)). Signing up had a "personal use" option, and the
+free Trial was granted on the spot. A search of Plaid's sandbox found all four of my banks with
+Transactions. The dashboard's OAuth page said no action is needed on the Trial for bank logins.
+The only rough edges are at Capital One: 90 days of history through Plaid and no on-demand
+refresh. Its own download seems to go back further, so a one-time import of older history stays
+possible. My Discover card hasn't moved to a Capital One login yet, which matters for when to
+connect it.
+
+That settles the provider ([decision 22](decisions/0022-plaid-for-bank-sync.md)): Plaid for bank
+sync, with CSV import dropped as a planned piece.
+
+A small one: the check's shell commands broke the first time I pasted them, because the
+terminal wrapped a long line and left a `\` on its own. The version in the spec now ends lines
+in pipes, so wrapping can't break it.
+
+**Next:** connecting accounts (3b), starting in the sandbox with the two open questions: whether
+my tailnet-only address works as Plaid's redirect, and what the bank login does inside the
+home-screen app.

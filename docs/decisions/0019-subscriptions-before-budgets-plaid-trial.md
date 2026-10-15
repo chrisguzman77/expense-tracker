@@ -1,7 +1,8 @@
 # 19. Subscriptions before budgets; Plaid's free plan as the planned aggregator
 
 - **Date:** 2026-10-13
-- **Status:** Accepted (amends the order in [record 13](0013-personal-finance-roadmap.md))
+- **Status:** Accepted (amends the order in [record 13](0013-personal-finance-roadmap.md));
+  provider choice refined by [record 22](0022-plaid-for-bank-sync.md)
 
 ## Context
 
