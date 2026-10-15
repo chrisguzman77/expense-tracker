@@ -15,9 +15,16 @@ const lunch = { id: 10, amount: "-12.50", occurred_on: "2026-10-10", note: "Lunc
 const refund = { id: 11, amount: "20.00", occurred_on: "2026-10-11", note: null, category: food, account: card };
 
 function fakeApi({ failWith }: { failWith?: string } = {}) {
+  const rows = [lunch, refund];
   const put: unknown[] = [];
+  const deleted: number[] = [];
   server.use(
-    http.get("/api/transactions", () => HttpResponse.json([lunch, refund])),
+    http.get("/api/transactions", () => HttpResponse.json(rows)),
+    http.delete("/api/transactions/:id", ({ params }) => {
+      deleted.push(Number(params.id));
+      rows.splice(rows.findIndex((r) => r.id === Number(params.id)), 1);
+      return new HttpResponse(null, { status: 204 });
+    }),
     http.get("/api/accounts", () => HttpResponse.json([wallet, card])),
     http.get("/api/categories", () => HttpResponse.json([food, rent])),
     http.put("/api/transactions/:id", async ({ params, request }) => {
@@ -29,12 +36,13 @@ function fakeApi({ failWith }: { failWith?: string } = {}) {
       return HttpResponse.json({ id: Number(params.id), ...body, category, account });
     }),
   );
-  return { put };
+  return { put, deleted };
 }
 
 function renderPage(path: string) {
   const router = createMemoryRouter(
     [
+      { path: "/", element: <p>transactions list</p> },
       { path: "/transactions/:id/edit", element: <EditTransactionPage /> },
       { path: "/transactions/:id", element: <p>detail screen</p> },
     ],
@@ -105,6 +113,33 @@ describe("EditTransactionPage", () => {
     expect(put).toEqual([
       { id: 10, account_id: 2, category_id: 2, amount: "15", occurred_on: "2026-10-10", note: "Lunch" },
     ]);
+    expect(queryClient.getQueryState(["summary", 2026, 10])?.isInvalidated).toBe(true);
+  });
+
+  it("asks before deleting; Cancel keeps the transaction", async () => {
+    const { deleted } = fakeApi();
+    renderPage("/transactions/10/edit");
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole("button", { name: "Delete transaction" }));
+    expect(screen.getByText("Delete this transaction? This can't be undone.")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+
+    expect(screen.getByRole("button", { name: "Delete transaction" })).toBeInTheDocument();
+    expect(deleted).toEqual([]);
+  });
+
+  it("deletes after confirmation, refreshes the summary and returns to the list", async () => {
+    const { deleted } = fakeApi();
+    const { queryClient } = renderPage("/transactions/10/edit");
+    queryClient.setQueryData(["summary", 2026, 10], []);
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole("button", { name: "Delete transaction" }));
+    await user.click(screen.getByRole("button", { name: "Delete" }));
+
+    expect(await screen.findByText("transactions list")).toBeInTheDocument();
+    expect(deleted).toEqual([10]);
     expect(queryClient.getQueryState(["summary", 2026, 10])?.isInvalidated).toBe(true);
   });
 
