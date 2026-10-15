@@ -4,7 +4,7 @@ A self-hosted personal finance app: track money in and out across accounts, with
 transfers kept out of the spending totals, and see monthly summaries by category.
 Built as an end-to-end practice project covering scoping, architecture, tests, CI and deployment.
 
-**Roadmap:** CSV import, bank sync, detection of forgotten subscriptions, and budgets.
+**Roadmap:** bank sync through Plaid, detection of forgotten subscriptions, and budgets.
 
 ## Stack
 
@@ -44,6 +44,8 @@ browser --https--> tailscale serve --> nginx --> FastAPI --> Postgres
 
 - [Decision records](docs/decisions/): why the system is built this way, with the alternatives
   considered for each choice.
+- [Research](docs/research/): checks done before committing to an outside service, such as
+  [Plaid coverage](docs/research/plaid-coverage.md) for my banks.
 - [Lessons learned](docs/lessons-learned.md): bugs and surprises found along the way, and what
   changed because of them.
 - [Devlog](docs/devlog.md): a dated log of each working session.

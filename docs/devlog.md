@@ -354,3 +354,49 @@ caught along the way:
   moving up before connecting accounts.
 
 **Next:** run the coverage check against Plaid's sandbox; then connecting accounts (3b).
+
+## 2026-10-15 — Plaid checks out
+
+Ran the coverage check that decision 19 asked for before building on Plaid
+([research note](research/plaid-coverage.md)). Signing up had a "personal use" option, and the
+free Trial was granted on the spot. A search of Plaid's sandbox found all four of my banks with
+Transactions. The dashboard's OAuth page said no action is needed on the Trial for bank logins.
+The only rough edges are at Capital One: 90 days of history through Plaid and no on-demand
+refresh. Its own download seems to go back further, so a one-time import of older history stays
+possible. My Discover card hasn't moved to a Capital One login yet, which matters for when to
+connect it.
+
+That settles the provider ([decision 22](decisions/0022-plaid-for-bank-sync.md)): Plaid for bank
+sync, with CSV import dropped as a planned piece.
+
+A small one: the check's shell commands broke the first time I pasted them, because the
+terminal wrapped a long line and left a `\` on its own. The version in the spec now ends lines
+in pipes, so wrapping can't break it.
+
+**Next:** connecting accounts (3b), starting in the sandbox with the two open questions: whether
+my tailnet-only address works as Plaid's redirect, and what the bank login does inside the
+home-screen app.
+
+## 2026-10-15 — Edit in the header
+
+A small interface fix before connecting banks ([spec](superpowers/specs/2026-10-15-edit-in-header-design.md)).
+The account screen had its Edit and Delete buttons below the account's whole transaction list,
+which would have put them hundreds of rows down once a bank brings two years of history.
+
+Deleting was also done three different ways: buttons under a transaction, buttons under an
+account's list, and a trash icon on each category row that deleted in one tap with no
+confirmation. Now there is one pattern, the usual one on an iPhone:
+- **Edit** is a link in the screen's header, so it never scrolls away.
+- **Delete** sits at the bottom of the edit screen and always asks first. One shared component
+  holds that confirmation instead of three copies.
+- Category and account rows get a chevron (›), so it's clear they open something. Transaction
+  rows keep their amount on the right instead.
+
+Two details came along with it. Editing can now move a transaction to another account or
+category, so the "still has transactions" message says "move or delete them first". And a
+deleted record no longer flashes "not found" for a moment before the screen goes back to the
+list.
+
+Four tasks, each built and reviewed by separate agents; no review asked for changes.
+
+**Next:** connecting accounts (3b).

@@ -27,5 +27,6 @@ See [record 1](0001-record-architecture-decisions.md) for the format.
 | 19 | [Subscriptions before budgets; Plaid's free plan as the planned aggregator](0019-subscriptions-before-budgets-plaid-trial.md) | 2026-10-13 |
 | 20 | [Sliding sessions, remember me, and log out everywhere](0020-sliding-sessions-and-log-out-everywhere.md) | 2026-10-13 |
 | 21 | [Accounts, signed transactions and category kinds](0021-accounts-signed-transactions-and-category-kinds.md) | 2026-10-14 |
+| 22 | [Plaid for bank sync; CSV import dropped as a planned piece](0022-plaid-for-bank-sync.md) | 2026-10-15 |
 
 Bugs and surprises found along the way are in [lessons learned](../lessons-learned.md).

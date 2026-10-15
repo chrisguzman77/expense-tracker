@@ -2,8 +2,9 @@ import type { ReactNode } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useAccounts } from "../api/accounts";
 import { useCategories } from "../api/categories";
-import { type Transaction, useTransactions } from "../api/transactions";
+import { type Transaction, useDeleteTransaction, useTransactions } from "../api/transactions";
 import { Card } from "../components/Card";
+import { ConfirmDelete } from "../components/ConfirmDelete";
 import { Screen } from "../components/Screen";
 import { TransactionForm, type TransactionFormValues } from "./TransactionForm";
 
@@ -29,6 +30,18 @@ export function EditTransactionPage() {
   const categories = useCategories();
   const error = transactions.error ?? accounts.error ?? categories.error;
   const transaction = transactions.data?.find((t) => t.id === Number(id));
+  const remove = useDeleteTransaction();
+  // A successful delete reloads the list before we navigate away; don't flash "not found".
+  const deleting = remove.isPending || remove.isSuccess;
+
+  async function onDelete(transactionId: number) {
+    try {
+      await remove.mutateAsync(transactionId);
+      navigate("/", { replace: true });
+    } catch {
+      // Shown below via remove.error
+    }
+  }
 
   let content: ReactNode;
   if (error) {
@@ -40,16 +53,26 @@ export function EditTransactionPage() {
   } else if (!transactions.data || !accounts.data || !categories.data) {
     content = <p className="text-muted">Loading…</p>;
   } else if (!transaction) {
-    content = <Card className="p-6 text-center text-muted">Transaction not found</Card>;
+    content = deleting ? null : <Card className="p-6 text-center text-muted">Transaction not found</Card>;
   } else {
     content = (
-      <TransactionForm
-        accounts={accounts.data}
-        categories={categories.data}
-        defaultValues={toFormValues(transaction)}
-        transactionId={transaction.id}
-        onSaved={() => navigate(`/transactions/${transaction.id}`, { replace: true })}
-      />
+      <div className="flex flex-col gap-6">
+        <TransactionForm
+          accounts={accounts.data}
+          categories={categories.data}
+          defaultValues={toFormValues(transaction)}
+          transactionId={transaction.id}
+          onSaved={() => navigate(`/transactions/${transaction.id}`, { replace: true })}
+        />
+        <ConfirmDelete
+          label="Delete transaction"
+          question="Delete this transaction? This can't be undone."
+          onConfirm={() => onDelete(transaction.id)}
+          pending={remove.isPending}
+          error={remove.error?.message}
+          onCancel={() => remove.reset()}
+        />
+      </div>
     );
   }
 

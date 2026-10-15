@@ -2,12 +2,19 @@ import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { ChevronLeftIcon } from "./icons";
 
-type Props = { title: string; backTo: string; backState?: unknown; children: ReactNode };
+type Props = {
+  title: string;
+  backTo: string;
+  backState?: unknown;
+  // A link in the header's right-hand slot, e.g. Edit on a detail screen.
+  action?: { to: string; label: string };
+  children: ReactNode;
+};
 
 // Shell for screens pushed on top of the tabs. A home-screen app has no browser
 // back button, so every pushed screen carries its own, to a fixed route (the
 // app may have been opened directly on this screen, with no history).
-export function Screen({ title, backTo, backState, children }: Props) {
+export function Screen({ title, backTo, backState, action, children }: Props) {
   return (
     <div className="min-h-dvh">
       {/* The black-translucent status bar always draws white text, so the safe-area strip is brand-coloured. */}
@@ -19,6 +26,11 @@ export function Screen({ title, backTo, backState, children }: Props) {
               Back
             </Link>
             <h1 className="truncate text-center font-semibold">{title}</h1>
+            {action && (
+              <Link to={action.to} className="inline-flex min-h-11 items-center justify-end px-1 font-medium text-accent">
+                {action.label}
+              </Link>
+            )}
           </div>
         </div>
       </header>
