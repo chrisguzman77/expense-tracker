@@ -10,9 +10,10 @@ import { EditCategoryPage } from "./EditCategoryPage";
 const food = { id: 1, name: "Food", color: "amber", icon: "🍔", kind: "spending" };
 const rent = { id: 2, name: "Rent", color: "sky", icon: "🏠", kind: "spending" };
 
-function fakeApi() {
+function fakeApi({ inUse = false } = {}) {
   const rows = [food, rent];
   const put: unknown[] = [];
+  const deleted: number[] = [];
   server.use(
     http.get("/api/categories", () => HttpResponse.json(rows)),
     http.put("/api/categories/:id", async ({ params, request }) => {
@@ -24,8 +25,13 @@ function fakeApi() {
       }
       return HttpResponse.json({ id, ...body });
     }),
+    http.delete("/api/categories/:id", ({ params }) => {
+      deleted.push(Number(params.id));
+      if (inUse) return HttpResponse.json({ detail: "Category has transactions" }, { status: 409 });
+      return new HttpResponse(null, { status: 204 });
+    }),
   );
-  return { put };
+  return { put, deleted };
 }
 
 function renderPage(path: string) {
@@ -99,5 +105,45 @@ describe("EditCategoryPage", () => {
     renderPage("/categories/99/edit");
 
     expect(await screen.findByText("Category not found")).toBeInTheDocument();
+  });
+
+  it("asks before deleting; Cancel keeps the category", async () => {
+    const { deleted } = fakeApi();
+    renderPage("/categories/1/edit");
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole("button", { name: "Delete category" }));
+    expect(screen.getByText("Delete this category? This can't be undone.")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+
+    expect(screen.getByRole("button", { name: "Delete category" })).toBeInTheDocument();
+    expect(deleted).toEqual([]);
+  });
+
+  it("deletes after confirmation and returns to Categories", async () => {
+    const { deleted } = fakeApi();
+    renderPage("/categories/1/edit");
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole("button", { name: "Delete category" }));
+    await user.click(screen.getByRole("button", { name: "Delete" }));
+
+    expect(await screen.findByText("categories tab")).toBeInTheDocument();
+    expect(deleted).toEqual([1]);
+  });
+
+  it("explains why a category with transactions can't be deleted, and Cancel clears it", async () => {
+    fakeApi({ inUse: true });
+    renderPage("/categories/1/edit");
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole("button", { name: "Delete category" }));
+    await user.click(screen.getByRole("button", { name: "Delete" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "This category still has transactions; move or delete them first.",
+    );
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 });

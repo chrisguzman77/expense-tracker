@@ -9,7 +9,7 @@ import { CategoriesPage } from "./CategoriesPage";
 
 type Category = { id: number; name: string; color: string; icon: string; kind: string };
 
-// A tiny in-memory backend so list/create/delete interact like the real API.
+// A tiny in-memory backend so list/create interact like the real API.
 function fakeCategories(initial: Category[]) {
   const rows = [...initial];
   let nextId = Math.max(0, ...rows.map((r) => r.id)) + 1;
@@ -25,12 +25,6 @@ function fakeCategories(initial: Category[]) {
       const row = { id: nextId++, ...body };
       rows.push(row);
       return HttpResponse.json(row, { status: 201 });
-    }),
-    http.delete("/api/categories/:id", ({ params }) => {
-      const id = Number(params.id);
-      if (id === 99) return HttpResponse.json({ detail: "Category has transactions" }, { status: 409 });
-      rows.splice(rows.findIndex((r) => r.id === id), 1);
-      return new HttpResponse(null, { status: 204 });
     }),
   );
   return { posted };
@@ -169,25 +163,11 @@ describe("CategoriesPage", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("Category name taken");
   });
 
-  it("deletes an empty category", async () => {
+  it("has no delete buttons on the rows", async () => {
     fakeCategories([food, rent]);
     renderPage();
-    const user = userEvent.setup();
-
-    await user.click(await screen.findByRole("button", { name: "Delete Rent" }));
 
     await screen.findByText("Food");
-    expect(screen.queryByText("Rent")).not.toBeInTheDocument();
-  });
-
-  it("shows the server message when deleting a category with transactions", async () => {
-    fakeCategories([{ ...food, id: 99 }]);
-    renderPage();
-    const user = userEvent.setup();
-
-    await user.click(await screen.findByRole("button", { name: "Delete Food" }));
-
-    expect(await screen.findByRole("alert")).toHaveTextContent("Category has transactions");
-    expect(screen.getByText("Food")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^Delete/ })).not.toBeInTheDocument();
   });
 });
