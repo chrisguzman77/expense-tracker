@@ -11,16 +11,7 @@ const food = { id: 1, name: "Food", color: "amber", icon: "🍔", kind: "spendin
 
 function fakeApi() {
   const rows = [{ id: 10, amount: "-12.50", occurred_on: "2026-10-10", note: "Lunch", category: food, account: { id: 1, name: "Wallet", type: "cash" } }];
-  const deleted: number[] = [];
-  server.use(
-    http.get("/api/transactions", () => HttpResponse.json(rows)),
-    http.delete("/api/transactions/:id", ({ params }) => {
-      deleted.push(Number(params.id));
-      rows.splice(rows.findIndex((r) => r.id === Number(params.id)), 1);
-      return new HttpResponse(null, { status: 204 });
-    }),
-  );
-  return { deleted };
+  server.use(http.get("/api/transactions", () => HttpResponse.json(rows)));
 }
 
 function renderPage(path: string) {
@@ -53,46 +44,28 @@ describe("TransactionDetailPage", () => {
     expect(screen.getByText("Lunch")).toBeInTheDocument();
   });
 
-  it("asks for confirmation; cancelling keeps the transaction", async () => {
-    const { deleted } = fakeApi();
-    renderPage("/transactions/10");
-    const user = userEvent.setup();
-
-    await user.click(await screen.findByRole("button", { name: "Delete transaction" }));
-    expect(screen.getByText(/delete this transaction\?/i)).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Cancel" }));
-
-    expect(screen.getByRole("button", { name: "Delete transaction" })).toBeInTheDocument();
-    expect(deleted).toEqual([]);
-  });
-
-  it("deletes after confirmation, refreshes the summary and returns to the list", async () => {
-    const { deleted } = fakeApi();
-    const { queryClient } = renderPage("/transactions/10");
-    queryClient.setQueryData(["summary", 2026, 10], []);
-    const user = userEvent.setup();
-
-    await user.click(await screen.findByRole("button", { name: "Delete transaction" }));
-    await user.click(screen.getByRole("button", { name: "Delete" }));
-
-    expect(await screen.findByText("transactions list")).toBeInTheDocument();
-    expect(deleted).toEqual([10]);
-    expect(queryClient.getQueryState(["summary", 2026, 10])?.isInvalidated).toBe(true);
-  });
-
   it("says when the transaction doesn't exist", async () => {
     fakeApi();
     renderPage("/transactions/999");
 
     expect(await screen.findByText("Transaction not found")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Edit" })).not.toBeInTheDocument();
   });
 
-  it("opens the edit screen", async () => {
+  it("opens the edit screen from the header", async () => {
     fakeApi();
     renderPage("/transactions/10");
 
-    await userEvent.setup().click(await screen.findByRole("button", { name: "Edit transaction" }));
+    await userEvent.setup().click(await screen.findByRole("link", { name: "Edit" }));
 
     expect(await screen.findByText("edit screen")).toBeInTheDocument();
+  });
+
+  it("has no Delete button", async () => {
+    fakeApi();
+    renderPage("/transactions/10");
+
+    await screen.findByText("$12.50");
+    expect(screen.queryByRole("button", { name: /delete/i })).not.toBeInTheDocument();
   });
 });

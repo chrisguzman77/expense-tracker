@@ -33,4 +33,36 @@ describe("Screen", () => {
 
     expect(await screen.findByText('home {"keep":1}')).toBeInTheDocument();
   });
+
+  it("shows a header action link when given one", () => {
+    const router = createMemoryRouter([
+      {
+        path: "/",
+        element: (
+          <Screen title="Account" backTo="/accounts" action={{ to: "/accounts/1/edit", label: "Edit" }}>
+            <p>body</p>
+          </Screen>
+        ),
+      },
+    ]);
+    render(<RouterProvider router={router} />);
+
+    expect(screen.getByRole("link", { name: "Edit" })).toHaveAttribute("href", "/accounts/1/edit");
+  });
+
+  it("has no link besides Back without an action", () => {
+    const router = createMemoryRouter([
+      {
+        path: "/",
+        element: (
+          <Screen title="Account" backTo="/accounts">
+            <p>body</p>
+          </Screen>
+        ),
+      },
+    ]);
+    render(<RouterProvider router={router} />);
+
+    expect(screen.getAllByRole("link")).toHaveLength(1);
+  });
 });

@@ -10,7 +10,8 @@ import { EditAccountPage } from "./EditAccountPage";
 const wells = { id: 1, name: "Wells Fargo", type: "checking" };
 const card = { id: 2, name: "Chase Freedom", type: "credit_card" };
 
-function fakeApi() {
+function fakeApi({ inUse = false } = {}) {
+  const deleted: number[] = [];
   const rows = [card, wells];
   const put: unknown[] = [];
   server.use(
@@ -24,8 +25,14 @@ function fakeApi() {
       }
       return HttpResponse.json({ id, ...body });
     }),
+    http.delete("/api/accounts/:id", ({ params }) => {
+      deleted.push(Number(params.id));
+      if (inUse) return HttpResponse.json({ detail: "Account has transactions" }, { status: 409 });
+      rows.splice(rows.findIndex((r) => r.id === Number(params.id)), 1);
+      return new HttpResponse(null, { status: 204 });
+    }),
   );
-  return { put };
+  return { put, deleted };
 }
 
 function renderPage(path: string) {
@@ -33,6 +40,7 @@ function renderPage(path: string) {
     [
       { path: "/accounts/:id/edit", element: <EditAccountPage /> },
       { path: "/accounts/:id", element: <p>account screen</p> },
+      { path: "/accounts", element: <p>accounts tab</p> },
     ],
     { initialEntries: [path] },
   );
@@ -91,5 +99,45 @@ describe("EditAccountPage", () => {
 
     expect(await screen.findByText("Account not found")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Back" })).toHaveAttribute("href", "/accounts");
+  });
+
+  it("asks before deleting; Cancel keeps the account", async () => {
+    const { deleted } = fakeApi();
+    renderPage("/accounts/1/edit");
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole("button", { name: "Delete account" }));
+    expect(screen.getByText("Delete this account? This can't be undone.")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+
+    expect(screen.getByRole("button", { name: "Delete account" })).toBeInTheDocument();
+    expect(deleted).toEqual([]);
+  });
+
+  it("deletes after confirmation and returns to the Accounts tab", async () => {
+    const { deleted } = fakeApi();
+    renderPage("/accounts/1/edit");
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole("button", { name: "Delete account" }));
+    await user.click(screen.getByRole("button", { name: "Delete" }));
+
+    expect(await screen.findByText("accounts tab")).toBeInTheDocument();
+    expect(deleted).toEqual([1]);
+  });
+
+  it("explains why an account with transactions can't be deleted, and Cancel clears it", async () => {
+    fakeApi({ inUse: true });
+    renderPage("/accounts/1/edit");
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole("button", { name: "Delete account" }));
+    await user.click(screen.getByRole("button", { name: "Delete" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "This account still has transactions; move or delete them first.",
+    );
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 });
