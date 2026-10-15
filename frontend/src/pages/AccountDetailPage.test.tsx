@@ -11,8 +11,7 @@ const wells = { id: 1, name: "Wells Fargo", type: "checking" };
 
 const food = { id: 1, name: "Food", color: "amber", icon: "🍔", kind: "spending" };
 
-function fakeApi({ inUse = false, transactions = [] as object[] } = {}) {
-  const deleted: number[] = [];
+function fakeApi({ transactions = [] as object[] } = {}) {
   const requested: (string | null)[] = [];
   server.use(
     http.get("/api/accounts", () => HttpResponse.json([wells])),
@@ -20,13 +19,8 @@ function fakeApi({ inUse = false, transactions = [] as object[] } = {}) {
       requested.push(new URL(request.url).searchParams.get("account_id"));
       return HttpResponse.json(transactions);
     }),
-    http.delete("/api/accounts/:id", ({ params }) => {
-      deleted.push(Number(params.id));
-      if (inUse) return HttpResponse.json({ detail: "Account has transactions" }, { status: 409 });
-      return new HttpResponse(null, { status: 204 });
-    }),
   );
-  return { deleted, requested };
+  return { requested };
 }
 
 function renderPage(path: string) {
@@ -47,13 +41,21 @@ function renderPage(path: string) {
 }
 
 describe("AccountDetailPage", () => {
-  it("opens the edit screen", async () => {
+  it("opens the edit screen from the header", async () => {
     fakeApi();
     renderPage("/accounts/1");
 
-    await userEvent.setup().click(await screen.findByRole("button", { name: "Edit account" }));
+    await userEvent.setup().click(await screen.findByRole("link", { name: "Edit" }));
 
     expect(await screen.findByText("edit screen")).toBeInTheDocument();
+  });
+
+  it("has no Delete button", async () => {
+    fakeApi();
+    renderPage("/accounts/1");
+
+    await screen.findByText("Wells Fargo");
+    expect(screen.queryByRole("button", { name: /delete/i })).not.toBeInTheDocument();
   });
 
   it("lists the account's transactions", async () => {
@@ -81,50 +83,11 @@ describe("AccountDetailPage", () => {
     expect(screen.getByText("Checking")).toBeInTheDocument();
   });
 
-  it("asks for confirmation; cancelling keeps the account", async () => {
-    const { deleted } = fakeApi();
-    renderPage("/accounts/1");
-    const user = userEvent.setup();
-
-    await user.click(await screen.findByRole("button", { name: "Delete account" }));
-    expect(screen.getByText(/delete this account\?/i)).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Cancel" }));
-
-    expect(screen.getByRole("button", { name: "Delete account" })).toBeInTheDocument();
-    expect(deleted).toEqual([]);
-  });
-
-  it("deletes after confirmation and returns to the Accounts tab", async () => {
-    const { deleted } = fakeApi();
-    renderPage("/accounts/1");
-    const user = userEvent.setup();
-
-    await user.click(await screen.findByRole("button", { name: "Delete account" }));
-    await user.click(screen.getByRole("button", { name: "Delete" }));
-
-    expect(await screen.findByText("accounts tab")).toBeInTheDocument();
-    expect(deleted).toEqual([1]);
-  });
-
-  it("explains why an account with transactions can't be deleted, and Cancel clears it", async () => {
-    fakeApi({ inUse: true });
-    renderPage("/accounts/1");
-    const user = userEvent.setup();
-
-    await user.click(await screen.findByRole("button", { name: "Delete account" }));
-    await user.click(screen.getByRole("button", { name: "Delete" }));
-
-    expect(await screen.findByRole("alert")).toHaveTextContent(
-      "This account still has transactions; delete them first.",
-    );
-    await user.click(screen.getByRole("button", { name: "Cancel" }));
-    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
-  });
-
   it("says when the account doesn't exist", async () => {
     fakeApi();
     renderPage("/accounts/999");
 
     expect(await screen.findByText("Account not found")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Edit" })).not.toBeInTheDocument();
   });
 });

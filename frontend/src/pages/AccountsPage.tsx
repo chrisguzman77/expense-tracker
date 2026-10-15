@@ -3,7 +3,7 @@ import { useAccounts } from "../api/accounts";
 import { AccountIcon } from "../components/AccountIcon";
 import { Card } from "../components/Card";
 import { GradientHeader } from "../components/GradientHeader";
-import { PlusIcon } from "../components/icons";
+import { ChevronRightIcon, PlusIcon } from "../components/icons";
 import { accountTypeLabel } from "../lib/accountTypes";
 
 export function AccountsPage() {
@@ -41,6 +41,7 @@ export function AccountsPage() {
                       <span className="block truncate font-semibold">{a.name}</span>
                       <span className="block text-sm text-muted">{accountTypeLabel(a.type)}</span>
                     </span>
+                    <ChevronRightIcon className="size-5 shrink-0 text-muted" />
                   </Link>
                 </li>
               ))}
